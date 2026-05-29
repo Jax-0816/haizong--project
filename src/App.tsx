@@ -1,0 +1,2438 @@
+import {
+  BarChart3,
+  BookOpenText,
+  Boxes,
+  CheckCircle2,
+  Clipboard,
+  Clapperboard,
+  ExternalLink,
+  FileText,
+  Globe2,
+  LayoutDashboard,
+  Library,
+  Loader2,
+  Search,
+  Sparkles,
+  Trash2,
+} from "lucide-react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
+import data from "./data/content.json";
+import type {
+  HotspotOpportunity,
+  ContentProduction,
+  IterationSuggestion,
+  PriorityTopic,
+  PromptTemplate,
+  GeneratedTopicCandidate,
+  ResearchFreshness,
+  ResearchRequest,
+  ResearchResult,
+  ScriptStatus,
+  Topic,
+  TopicCandidateGenerateRequest,
+  TopicCandidateGenerateResult,
+  TopicCategory,
+  TopicRefreshRequest,
+  ProductionStep,
+  ReviewRecord,
+  ScriptTemplate,
+} from "./types";
+
+type ViewId = "dashboard" | "topics" | "production" | "research" | "scripts" | "prompts" | "materials" | "reviews";
+
+const navItems: Array<{ id: ViewId; label: string; icon: typeof LayoutDashboard }> = [
+  { id: "dashboard", label: "首页概览", icon: LayoutDashboard },
+  { id: "topics", label: "选题池", icon: Library },
+  { id: "production", label: "内容生产台", icon: Clapperboard },
+  { id: "research", label: "联网调研", icon: Globe2 },
+  { id: "scripts", label: "脚本模板", icon: FileText },
+  { id: "prompts", label: "提示词库", icon: Sparkles },
+  { id: "materials", label: "素材库", icon: Boxes },
+  { id: "reviews", label: "发布复盘", icon: BarChart3 },
+];
+
+const viewDescriptions: Record<ViewId, string> = {
+  dashboard: "聚焦今日优先事项、关键指标和本周内容节奏。",
+  topics: "统一管理选题、筛选来源，并把候选方向推进到生产流程。",
+  production: "围绕单个选题完成调研、脚本、素材、发布和复盘。",
+  research: "结合实时搜索结果，为 B 端内容判断提供引用依据。",
+  scripts: "沉淀可复用的脚本结构，减少重复搭建内容框架的时间。",
+  prompts: "统一维护提示词资产，方便复制和迭代。",
+  materials: "管理产品、案例和拍摄素材，支撑内容生产效率。",
+  reviews: "回看发布数据与结论，把表现反馈进下一轮选题。",
+};
+
+const statusOrder: ScriptStatus[] = ["未写", "已写", "已拍", "已发"];
+const topicCategories = data.topicCategories as TopicCategory[];
+const columnFilterOptions = [
+  { value: "火锅食材选品指南", label: "选品指南" },
+  { value: "火锅店爆品打造", label: "爆品打造" },
+  { value: "火锅店成本控制", label: "成本控制" },
+  { value: "节日节气备货建议", label: "节气备货" },
+  { value: "餐饮老板避坑指南", label: "老板避坑" },
+  { value: "食材供应链知识", label: "供应链知识" },
+];
+const sourceFilterOptions = ["行业热点", "节日节气", "用户痛点", "产品卖点", "B端经营", "供应链趋势", "系列延展"] as const;
+const contentStatusOptions = ["待撰写", "已撰写", "待优化", "已发布"] as const;
+type SourceFilter = "全部来源" | (typeof sourceFilterOptions)[number];
+type ContentStatusFilter = "全部状态" | (typeof contentStatusOptions)[number];
+const productionSteps: Array<{ id: ProductionStep; label: string; description: string }> = [
+  { id: "topic", label: "选题信息", description: "标题、栏目、来源、状态、观点、用户" },
+  { id: "research", label: "调研依据", description: "行业热点、节气节点、痛点、卖点" },
+  { id: "template", label: "脚本模板", description: "选择内容结构" },
+  { id: "script", label: "脚本生成", description: "开头、正文、结尾、口播" },
+  { id: "materials", label: "素材匹配", description: "产品图、场景、食材、封面" },
+  { id: "publish", label: "发布内容", description: "标题、简介、标签、平台文案" },
+  { id: "review", label: "发布复盘", description: "数据、线索、优化建议" },
+];
+const researchHistoryKey = "haizong.research.history.v1";
+const dashboardAiKey = "haizong.dashboard.ai.v1";
+const productionTopicIdsKey = "haizong.production.topic-ids.v1";
+const defaultTopicCandidateForm: TopicCandidateGenerateRequest = {
+  category: topicCategories[0],
+  query: "火锅店近期经营热点",
+  targetUser: "火锅店老板",
+  column: data.columns[0],
+  freshness: "oneMonth",
+  notes: "",
+  limit: 5,
+};
+const defaultResearchForm: ResearchRequest = {
+  mode: "general",
+  query: "夏季火锅淡季拉客",
+  targetUser: "火锅店老板",
+  column: "火锅店成本控制",
+  freshness: "oneMonth",
+  notes: "",
+};
+const freshnessOptions: Array<{ value: ResearchFreshness; label: string }> = [
+  { value: "noLimit", label: "不限时间" },
+  { value: "oneDay", label: "近一天" },
+  { value: "oneWeek", label: "近一周" },
+  { value: "oneMonth", label: "近一月" },
+  { value: "oneYear", label: "近一年" },
+];
+
+const emptyProduction = (topicId: string): ContentProduction => ({
+  topicId,
+  currentStep: "topic",
+  researchNotes: "",
+  selectedTemplateId: "",
+  scriptDraft: { opener: "", structure: "", ending: "", voiceover: "" },
+  matchedMaterials: { productImages: [], storeScenes: [], foodShots: [], coverReferences: [] },
+  publishDraft: { title: "", description: "", hashtags: [], platformCopies: [] },
+  reviewDraft: {
+    publishDate: "",
+    platform: "",
+    views: 0,
+    likes: 0,
+    comments: 0,
+    saves: 0,
+    shares: 0,
+    leads: 0,
+    optimization: "",
+  },
+  updatedAt: "",
+});
+
+const formatNumber = (value: number) => new Intl.NumberFormat("zh-CN").format(value);
+
+function getColumnLabel(columnValue: string) {
+  return columnFilterOptions.find((item) => item.value === columnValue)?.label ?? columnValue;
+}
+
+function getSourceLabel(topic: Topic): SourceFilter {
+  if (topic.topicCategory === "系列化选题") {
+    return "系列延展";
+  }
+
+  if (topic.column === "食材供应链知识" || /供应链|标准化|连锁|配送/.test(topic.hotSource + topic.angle + topic.coreView)) {
+    return "供应链趋势";
+  }
+
+  if (topic.topicCategory === "节气节日选题") {
+    return "节日节气";
+  }
+
+  if (topic.topicCategory === "用户痛点选题") {
+    return "用户痛点";
+  }
+
+  if (topic.topicCategory === "产品种草选题" || topic.topicCategory === "爆品打造选题") {
+    return "产品卖点";
+  }
+
+  if (topic.topicCategory === "B端经营选题") {
+    return "B端经营";
+  }
+
+  return "行业热点";
+}
+
+function getContentStatusLabel(topic: Topic): ContentStatusFilter {
+  if (topic.scriptStatus === "已发") {
+    return "已发布";
+  }
+
+  if (topic.review.includes("待")) {
+    return "待优化";
+  }
+
+  if (topic.scriptStatus === "已写" || topic.scriptStatus === "已拍") {
+    return "已撰写";
+  }
+
+  return "待撰写";
+}
+
+type PerformanceInsight = {
+  label: string;
+  topic: Topic;
+  value: string;
+  reason: string;
+};
+
+type DashboardAiState = {
+  label: string;
+  result: ResearchResult;
+};
+
+type AuthSession = {
+  token: string;
+  username: string;
+  displayName: string;
+  loginAt: string;
+  expiresAt: string;
+  authMode: "local" | "remote";
+};
+
+type AppAuthApi = {
+  getSession: () => AuthSession | null;
+  logout: (options?: { redirect?: boolean; redirectTo?: string }) => void;
+};
+
+declare global {
+  interface Window {
+    AppAuth?: AppAuthApi;
+  }
+}
+
+function App() {
+  const defaultProductionTopicIds = useMemo(() => (data.topics as Topic[]).map((topic) => topic.id), []);
+  const [activeView, setActiveView] = useState<ViewId>("dashboard");
+  const [query, setQuery] = useState("");
+  const [column, setColumn] = useState("全部栏目");
+  const [sourceFilter, setSourceFilter] = useState<SourceFilter>("全部来源");
+  const [contentStatus, setContentStatus] = useState<ContentStatusFilter>("全部状态");
+  const [selectedTopicId, setSelectedTopicId] = useState(data.topics[0]?.id ?? "");
+  const [productionTopicId, setProductionTopicId] = useState(data.topics[0]?.id ?? "");
+  const [productionTopicIds, setProductionTopicIds] = useState<string[]>(() => {
+    if (typeof window === "undefined") {
+      return defaultProductionTopicIds;
+    }
+
+    try {
+      const saved = window.localStorage.getItem(productionTopicIdsKey);
+      if (!saved) {
+        return defaultProductionTopicIds;
+      }
+
+      const parsed = JSON.parse(saved);
+      return Array.isArray(parsed) ? parsed.map((item) => String(item)).filter(Boolean) : defaultProductionTopicIds;
+    } catch {
+      window.localStorage.removeItem(productionTopicIdsKey);
+      return defaultProductionTopicIds;
+    }
+  });
+  const [copiedPromptId, setCopiedPromptId] = useState("");
+  const [topics, setTopics] = useState<Topic[]>(() => data.topics as Topic[]);
+  const [session, setSession] = useState<AuthSession | null>(() => window.AppAuth?.getSession() ?? null);
+  const [productions, setProductions] = useState<ContentProduction[]>(() =>
+    Array.isArray((data as { productions?: ContentProduction[] }).productions)
+      ? ((data as { productions: ContentProduction[] }).productions)
+      : [],
+  );
+  const [reviews, setReviews] = useState<ReviewRecord[]>(() => data.reviews as ReviewRecord[]);
+
+  const filteredTopics = useMemo(() => {
+    const normalizedQuery = query.trim().toLowerCase();
+    return topics.filter((topic) => {
+      const matchesQuery =
+        normalizedQuery.length === 0 ||
+        [topic.title, topic.contentType, topic.targetUser, topic.painPoint, topic.angle, topic.coreView]
+          .join(" ")
+          .toLowerCase()
+          .includes(normalizedQuery);
+      const matchesColumn = column === "全部栏目" || topic.column === column;
+      const matchesSource = sourceFilter === "全部来源" || getSourceLabel(topic) === sourceFilter;
+      const matchesStatus = contentStatus === "全部状态" || getContentStatusLabel(topic) === contentStatus;
+      return matchesQuery && matchesColumn && matchesSource && matchesStatus;
+    });
+  }, [column, contentStatus, query, sourceFilter, topics]);
+
+  const selectedTopic = useMemo(() => {
+    return filteredTopics.find((topic) => topic.id === selectedTopicId) ?? filteredTopics[0] ?? topics[0];
+  }, [filteredTopics, selectedTopicId, topics]);
+
+  const metrics = useMemo(() => {
+    const totalViews = topics.reduce((sum, topic) => sum + topic.publishData.views, 0);
+    const published = topics.filter((topic) => topic.scriptStatus === "已发").length;
+    const needsReview = topics.filter(
+      (topic) => topic.publishData.views > 0 && topic.review.includes("待"),
+    ).length;
+    const statusCounts = statusOrder.map((item) => ({
+      label: item,
+      count: topics.filter((topic) => topic.scriptStatus === item).length,
+    }));
+    const columnCounts = data.columns.map((item) => ({
+      label: item,
+      count: topics.filter((topic) => topic.column === item).length,
+    }));
+    return { totalViews, published, needsReview, statusCounts, columnCounts };
+  }, [topics]);
+
+  const copyPrompt = async (prompt: PromptTemplate) => {
+    const text = `${prompt.body}\n\n输出字段：${prompt.outputFields.join("、")}`;
+    await navigator.clipboard.writeText(text);
+    setCopiedPromptId(prompt.id);
+    window.setTimeout(() => setCopiedPromptId(""), 1600);
+  };
+
+  useEffect(() => {
+    const syncSession = () => {
+      const nextSession = window.AppAuth?.getSession() ?? null;
+      setSession(nextSession);
+
+      if (!nextSession) {
+        window.location.replace("/login.html");
+      }
+    };
+
+    syncSession();
+    window.addEventListener("storage", syncSession);
+    window.addEventListener("auth:logout", syncSession);
+    window.addEventListener("auth:login", syncSession);
+    return () => {
+      window.removeEventListener("storage", syncSession);
+      window.removeEventListener("auth:logout", syncSession);
+      window.removeEventListener("auth:login", syncSession);
+    };
+  }, []);
+
+  useEffect(() => {
+    const validTopicIds = new Set(topics.map((topic) => topic.id));
+
+    setProductionTopicIds((current) => {
+      const filtered = current.filter((topicId) => validTopicIds.has(topicId));
+      const nextIds = filtered.length > 0 ? filtered : current.length === 0 ? [] : defaultProductionTopicIds.filter((topicId) => validTopicIds.has(topicId));
+      return filtered.length === current.length && filtered.every((topicId, index) => topicId === current[index]) ? current : nextIds;
+    });
+  }, [defaultProductionTopicIds, topics]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    window.localStorage.setItem(productionTopicIdsKey, JSON.stringify(productionTopicIds));
+  }, [productionTopicIds]);
+
+  useEffect(() => {
+    const currentVisible = productionTopicIds.filter((topicId) => topics.some((topic) => topic.id === topicId));
+    if (currentVisible.length === 0) {
+      if (productionTopicId) {
+        setProductionTopicId("");
+      }
+      return;
+    }
+
+    if (!currentVisible.includes(productionTopicId)) {
+      setProductionTopicId(currentVisible[0]);
+    }
+  }, [productionTopicId, productionTopicIds, topics]);
+
+  const ensureProductionTopicVisible = (topicId: string) => {
+    setProductionTopicIds((current) => (current.includes(topicId) ? current : [...current, topicId]));
+    setProductionTopicId(topicId);
+  };
+
+  const removeProductionTopic = (topicId: string) => {
+    setProductionTopicIds((current) => {
+      const index = current.indexOf(topicId);
+      if (index === -1) {
+        return current;
+      }
+
+      const next = current.filter((item) => item !== topicId);
+      setProductionTopicId((currentSelected) => {
+        if (currentSelected !== topicId) {
+          return currentSelected;
+        }
+        return next[Math.min(index, next.length - 1)] ?? "";
+      });
+      return next;
+    });
+  };
+
+  return (
+    <div className="app-shell">
+      <aside className="sidebar" aria-label="主导航">
+        <div className="brand">
+          <div className="brand-mark">海哥</div>
+          <div>
+            <strong>海哥自媒体账号内容工作台</strong>
+            <span>火锅食材B端内容生产流程</span>
+          </div>
+        </div>
+        <nav className="nav-list">
+          {navItems.map((item) => {
+            const Icon = item.icon;
+            return (
+              <button
+                className={`nav-button ${activeView === item.id ? "active" : ""}`}
+                key={item.id}
+                onClick={() => setActiveView(item.id)}
+                type="button"
+              >
+                <Icon size={18} aria-hidden="true" />
+                <span>{item.label}</span>
+              </button>
+            );
+          })}
+          <div className="nav-auth">
+            <div className="nav-user">
+              <strong>{session?.displayName ?? "已登录"}</strong>
+              <span>{session?.username ?? "本地账号"}</span>
+            </div>
+            <button
+              className="nav-button nav-logout-button"
+              onClick={() => window.AppAuth?.logout()}
+              type="button"
+            >
+              <span>退出登录</span>
+            </button>
+          </div>
+        </nav>
+      </aside>
+
+      <main className="workspace">
+        <header className="topbar">
+          <div>
+            <p className="eyebrow">Hot Pot Supply Chain Content</p>
+            <h1>{navItems.find((item) => item.id === activeView)?.label}</h1>
+            <div className="topbar-note-inline">{viewDescriptions[activeView]}</div>
+          </div>
+        </header>
+
+        {activeView === "dashboard" ? <Dashboard metrics={metrics} setActiveView={setActiveView} /> : null}
+
+        {activeView === "topics" ? (
+          <TopicsView
+            column={column}
+            filteredTopics={filteredTopics}
+            onTopicConfirmed={(topic) => {
+              setTopics((current) => [topic, ...current]);
+              setSelectedTopicId(topic.id);
+            }}
+            onStartProduction={(topicId) => {
+              ensureProductionTopicVisible(topicId);
+              setActiveView("production");
+            }}
+            query={query}
+            selectedTopic={selectedTopic}
+            setColumn={setColumn}
+            setContentStatus={setContentStatus}
+            setQuery={setQuery}
+            setSelectedTopicId={setSelectedTopicId}
+            setSourceFilter={setSourceFilter}
+            contentStatus={contentStatus}
+            sourceFilter={sourceFilter}
+          />
+        ) : null}
+
+        {activeView === "production" ? (
+          <ProductionView
+            onProductionSaved={(production, review, topic) => {
+              setProductions((current) => {
+                const existingIndex = current.findIndex((item) => item.topicId === production.topicId);
+                if (existingIndex === -1) {
+                  return [...current, production];
+                }
+                return current.map((item) => (item.topicId === production.topicId ? production : item));
+              });
+              if (topic) {
+                setTopics((current) => current.map((item) => (item.id === topic.id ? topic : item)));
+              }
+              if (review) {
+                setReviews((current) => {
+                  const existingIndex = current.findIndex((item) => item.id === review.id);
+                  if (existingIndex === -1) {
+                    return [...current, review];
+                  }
+                  return current.map((item) => (item.id === review.id ? review : item));
+                });
+              }
+            }}
+            productionTopicId={productionTopicId}
+            productionTopicIds={productionTopicIds}
+            productions={productions}
+            removeProductionTopic={removeProductionTopic}
+            setProductionTopicId={setProductionTopicId}
+            topics={topics}
+          />
+        ) : null}
+
+        {activeView === "research" ? <ResearchView /> : null}
+        {activeView === "scripts" ? <ScriptsView /> : null}
+        {activeView === "prompts" ? <PromptsView copiedPromptId={copiedPromptId} copyPrompt={copyPrompt} /> : null}
+        {activeView === "materials" ? <MaterialsView /> : null}
+        {activeView === "reviews" ? <ReviewsView reviews={reviews} /> : null}
+      </main>
+    </div>
+  );
+}
+
+function Dashboard({
+  metrics,
+  setActiveView,
+}: {
+  metrics: {
+    totalViews: number;
+    published: number;
+    needsReview: number;
+    statusCounts: Array<{ label: string; count: number }>;
+    columnCounts: Array<{ label: string; count: number }>;
+  };
+  setActiveView: (view: ViewId) => void;
+}) {
+  const topics = data.topics as Topic[];
+  const hotspots = data.hotspots as HotspotOpportunity[];
+  const suggestions = data.iterationSuggestions as IterationSuggestion[];
+  const priorityTopics = data.priorityTopics as PriorityTopic[];
+  const [dashboardFocus, setDashboardFocus] = useState("今天最值得优先做什么内容");
+  const [dashboardAi, setDashboardAi] = useState<DashboardAiState | null>(null);
+  const [dashboardAiError, setDashboardAiError] = useState("");
+  const [dashboardAiLoading, setDashboardAiLoading] = useState("");
+
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem(dashboardAiKey);
+      if (saved) {
+        setDashboardAi(JSON.parse(saved) as DashboardAiState);
+      }
+    } catch {
+      window.localStorage.removeItem(dashboardAiKey);
+    }
+  }, []);
+
+  const runDashboardAi = async (label: string, request: ResearchRequest) => {
+    setDashboardAiLoading(label);
+    setDashboardAiError("");
+
+    try {
+      const response = await fetch("/api/research", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(request),
+      });
+      const payload = await parseResearchResponse(response);
+
+      if (!response.ok) {
+        throw new Error(payload.error ?? "AI 请求失败");
+      }
+
+      const nextState = { label, result: payload as ResearchResult };
+      setDashboardAi(nextState);
+      window.localStorage.setItem(dashboardAiKey, JSON.stringify(nextState));
+    } catch (caught) {
+      setDashboardAiError(caught instanceof Error ? caught.message : "AI 请求失败");
+    } finally {
+      setDashboardAiLoading("");
+    }
+  };
+
+  const requestTodayDecision = () => {
+    runDashboardAi("AI 今日决策", {
+      mode: "dashboardDecision",
+      query: dashboardFocus || "今日内容决策",
+      targetUser: data.positioning.audience,
+      column: "全部栏目",
+      freshness: "oneMonth",
+      notes: JSON.stringify({
+        positioning: data.positioning,
+        hotspots,
+        priorityTopics,
+        materials: data.materials,
+      }),
+    });
+  };
+
+  const publishedTopics = topics.filter((topic) => topic.publishData.views > 0);
+  const averageViews =
+    publishedTopics.length > 0
+      ? Math.round(publishedTopics.reduce((sum, topic) => sum + topic.publishData.views, 0) / publishedTopics.length)
+      : 0;
+  const averageConversions =
+    publishedTopics.length > 0
+      ? Math.round(
+          publishedTopics.reduce((sum, topic) => sum + topic.publishData.conversions, 0) / publishedTopics.length,
+        )
+      : 0;
+  const topViews = [...publishedTopics].sort((a, b) => b.publishData.views - a.publishData.views)[0];
+  const topSaves = [...publishedTopics].sort((a, b) => {
+    const aRate = a.publishData.views > 0 ? a.publishData.saves / a.publishData.views : 0;
+    const bRate = b.publishData.views > 0 ? b.publishData.saves / b.publishData.views : 0;
+    return bRate - aRate;
+  })[0];
+  const topConversions = [...publishedTopics].sort((a, b) => b.publishData.conversions - a.publishData.conversions)[0];
+  const seriesCandidate =
+    publishedTopics.find((topic) => /系列|继续|扩展|清单|模板/.test(topic.review + topic.title + topic.column)) ??
+    publishedTopics[0];
+  const insights: PerformanceInsight[] = [
+    topViews
+      ? {
+          label: "高播放",
+          topic: topViews,
+          value: formatNumber(topViews.publishData.views),
+          reason: `高于已发布作品平均播放 ${formatNumber(averageViews)}，适合复用内容结构。`,
+        }
+      : null,
+    topSaves
+      ? {
+          label: "高收藏",
+          topic: topSaves,
+          value: `${((topSaves.publishData.saves / topSaves.publishData.views) * 100).toFixed(1)}%`,
+          reason: "收藏率靠前，适合沉淀成清单、模板或长图文。",
+        }
+      : null,
+    topConversions
+      ? {
+          label: "高转化",
+          topic: topConversions,
+          value: `${topConversions.publishData.conversions}条`,
+          reason: `转化高于平均 ${averageConversions} 条，应补充产品资料和转化话术。`,
+        }
+      : null,
+    seriesCandidate
+      ? {
+          label: "可系列化",
+          topic: seriesCandidate,
+          value: seriesCandidate.contentType,
+          reason: "复盘结论或内容形态具备延展信号，适合继续拆成多集。",
+        }
+      : null,
+  ].filter(Boolean) as PerformanceInsight[];
+
+  const dashboardStats = [
+    { label: "选题池总数", value: "128", detail: "覆盖选品、爆品、成本、供应链" },
+    { label: "可拍摄选题", value: "36", detail: "已具备脚本或素材方向" },
+    { label: "本周待发布", value: "12", detail: "按节气和热点排期" },
+    { label: "高优先级热点", value: "5", detail: "需要 48 小时内响应" },
+    { label: "脚本模板", value: "18", detail: "痛点、避坑、清单、案例、种草" },
+    { label: "已复盘作品", value: "42", detail: "用于二次改编和选题回收" },
+  ];
+  const quickTopics = ["餐饮寒冬", "节气节日", "火锅爆品", "成本控制", "新品推荐", "门店经营"];
+  const workflowSteps = [
+    { icon: "01", title: "账号定位", detail: "锁定火锅食材供应链的 B 端表达边界" },
+    { icon: "02", title: "用户痛点", detail: "从老板、采购、后厨负责人的真实问题出发" },
+    { icon: "03", title: "热点抓取", detail: "结合节气、行业趋势和门店经营窗口" },
+    { icon: "04", title: "AI生成选题", detail: "把调研依据转成可执行内容方向" },
+    { icon: "05", title: "人工筛选", detail: "判断业务价值、产品关联和可拍摄性" },
+    { icon: "06", title: "脚本生产", detail: "套用结构，生成口播、画面和结尾引导" },
+    { icon: "07", title: "发布复盘", detail: "用数据反推下周选题和素材补充" },
+  ];
+  const assetCards = [
+    { title: "用户痛点库", detail: "沉淀老板、采购、后厨、新店、连锁品牌问题", count: "56条", updated: "今日更新" },
+    { title: "案例素材库", detail: "门店案例、爆品案例、失败案例和套餐拆解", count: "32组", updated: "本周更新" },
+    { title: "金句表达库", detail: "标题、开头、转化和评论区可复用表达", count: "48句", updated: "本周更新" },
+    { title: "产品资料库", detail: "毛肚、牛羊肉、丸滑、小吃甜品、锅底蘸料", count: "7类", updated: "持续维护" },
+    { title: "脚本模板库", detail: "痛点型、避坑型、清单型、案例型、种草型", count: "18套", updated: "持续维护" },
+    { title: "历史作品库", detail: "播放、互动、线索和复盘结论", count: "42条", updated: "发布后更新" },
+  ];
+  const weeklyPlan = [
+    { day: "周一", theme: "行业热点 / 经营判断", output: "餐饮寒冬下的高复购食材判断" },
+    { day: "周二", theme: "产品选品指南", output: "毛肚、鸭肠、丸滑的门店价值对比" },
+    { day: "周三", theme: "火锅店痛点解决", output: "菜单越厚利润越低的结构诊断" },
+    { day: "周四", theme: "案例拆解", output: "高客单套餐如何不增加后厨压力" },
+    { day: "周五", theme: "节日借势 / 套餐建议", output: "节前备货清单和小吃甜品加购" },
+  ];
+  const reviewCards = [
+    { title: "高互动内容", metric: topViews ? formatNumber(topViews.publishData.views) : "18,400", detail: topViews?.title ?? "鸭肠、毛肚、黄喉，谁更适合做门店招牌" },
+    { title: "可二次改编内容", metric: "系列化", detail: seriesCandidate?.title ?? "菜单结构类内容适合拆成系列" },
+    { title: "低表现内容", metric: "待优化", detail: "产品卖点不清时，先补门店场景和采购理由" },
+    { title: "下周推荐方向", metric: "成本控制", detail: "围绕高复购食材、低损耗组合、节气备货继续推进" },
+  ];
+
+  const applyQuickTopic = (topic: string) => {
+    setDashboardFocus(topic);
+    runDashboardAi(`AI 今日决策：${topic}`, {
+      mode: "dashboardDecision",
+      query: topic,
+      targetUser: data.positioning.audience,
+      column: "全部栏目",
+      freshness: "oneMonth",
+      notes: JSON.stringify({
+        positioning: data.positioning,
+        quickTopic: topic,
+        hotspots,
+        priorityTopics,
+        materials: data.materials,
+      }),
+    });
+  };
+
+  return (
+    <section className="command-dashboard">
+      <section className="command-hero">
+        <div className="command-hero-copy">
+          <span className="command-kicker">火锅食材 B 端内容决策</span>
+          <h2>今天先看机会，再决定做什么内容</h2>
+          <p>
+            围绕火锅食材供应链账号，结合 B 端用户痛点、节气热点、行业趋势和产品资料，
+            生成更适合发布的选题、脚本和内容方向。
+          </p>
+          <div className="command-actions">
+            <button className="command-button primary" disabled={Boolean(dashboardAiLoading)} onClick={requestTodayDecision} type="button">
+              {dashboardAiLoading ? <Loader2 className="spin-icon" size={18} aria-hidden="true" /> : <Sparkles size={18} aria-hidden="true" />}
+              <span>{dashboardAiLoading ? "生成中" : "生成今日选题"}</span>
+            </button>
+            <button className="command-button secondary" onClick={() => setActiveView("topics")} type="button">
+              查看选题池
+            </button>
+            <button className="command-button ghost" onClick={() => setActiveView("production")} type="button">
+              创建脚本
+            </button>
+          </div>
+        </div>
+
+        <article className="today-topic-card">
+          <span className="command-tag red">今日推荐选题</span>
+          <h3>餐饮寒冬下，火锅店应该保留哪些高复购食材？</h3>
+          <dl>
+            <div><dt>目标用户</dt><dd>火锅店老板</dd></div>
+            <div><dt>内容类型</dt><dd>经营痛点</dd></div>
+            <div><dt>产品关联</dt><dd>毛肚、鸭肠、丸滑、小吃甜品</dd></div>
+            <div><dt>推荐平台</dt><dd>抖音 / 视频号</dd></div>
+          </dl>
+          <div className="command-actions compact">
+            <button className="command-button primary" onClick={() => setActiveView("production")} type="button">生成脚本</button>
+            <button className="command-button secondary" onClick={() => setActiveView("topics")} type="button">加入本周计划</button>
+          </div>
+        </article>
+      </section>
+
+      <section className="command-stat-grid">
+        {dashboardStats.map((stat) => (
+          <article className="command-stat-card" key={stat.label}>
+            <span>{stat.label}</span>
+            <strong>{stat.value}</strong>
+            <small>{stat.detail}</small>
+          </article>
+        ))}
+      </section>
+
+      <section className="command-panel ai-command-panel">
+        <div className="command-section-head">
+          <div>
+            <span className="command-kicker">Tavily + DeepSeek</span>
+            <h2>AI 今日决策</h2>
+            <p>调用 Tavily + DeepSeek，基于账号定位、热点、选题和素材生成建议。</p>
+          </div>
+          <button className="command-button primary" disabled={Boolean(dashboardAiLoading)} onClick={requestTodayDecision} type="button">
+            {dashboardAiLoading ? "生成中" : "重新生成"}
+          </button>
+        </div>
+        <div className="command-chip-row">
+          {quickTopics.map((topic) => (
+            <button className="command-chip" disabled={Boolean(dashboardAiLoading)} key={topic} onClick={() => applyQuickTopic(topic)} type="button">
+              {topic}
+            </button>
+          ))}
+        </div>
+        {dashboardAiError ? <div className="research-error">{dashboardAiError}</div> : null}
+        {dashboardAi ? <DashboardAiResult state={dashboardAi} /> : <StaticDecisionPreview />}
+      </section>
+
+      <section className="command-panel">
+        <div className="command-section-head">
+          <div>
+            <span className="command-kicker">Production Workflow</span>
+            <h2>选题生产工作流</h2>
+            <p>从账号定位到发布复盘，把一个选题做成可发布的视频。</p>
+          </div>
+        </div>
+        <div className="workflow-grid">
+          {workflowSteps.map((step) => (
+            <article className="workflow-card" key={step.title}>
+              <b>{step.icon}</b>
+              <h3>{step.title}</h3>
+              <p>{step.detail}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="command-section-grid">
+        <div className="command-panel">
+          <div className="command-section-head">
+            <div>
+              <span className="command-kicker">Content Assets</span>
+              <h2>内容资产库</h2>
+            </div>
+          </div>
+          <div className="asset-grid">
+            {assetCards.map((asset) => (
+              <article className="asset-card" key={asset.title}>
+                <span className="command-tag green">{asset.count}</span>
+                <h3>{asset.title}</h3>
+                <p>{asset.detail}</p>
+                <small>最近更新：{asset.updated}</small>
+                <button className="asset-link" onClick={() => setActiveView(asset.title.includes("脚本") ? "scripts" : "materials")} type="button">
+                  进入
+                </button>
+              </article>
+            ))}
+          </div>
+        </div>
+
+        <div className="command-panel weekly-panel">
+          <div className="command-section-head">
+            <div>
+              <span className="command-kicker">Weekly Plan</span>
+              <h2>本周发布计划</h2>
+            </div>
+          </div>
+          <div className="weekly-list">
+            {weeklyPlan.map((item) => (
+              <article key={item.day}>
+                <span>{item.day}</span>
+                <h3>{item.theme}</h3>
+                <p>{item.output}</p>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="command-panel">
+        <div className="command-section-head">
+          <div>
+            <span className="command-kicker">Review Loop</span>
+            <h2>复盘与优化</h2>
+            <p>把播放、收藏、评论和线索变成下一轮选题依据。</p>
+          </div>
+        </div>
+        <div className="review-command-grid">
+          {reviewCards.map((card, index) => (
+            <article className="review-command-card" key={card.title}>
+              <span className={`command-tag ${index === 0 ? "red" : index === 1 ? "yellow" : "green"}`}>{card.title}</span>
+              <strong>{card.metric}</strong>
+              <p>{card.detail}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+    </section>
+  );
+}
+
+function StaticDecisionPreview() {
+  const ideas = [
+    { title: "火锅店淡季先别打折，先重做这 3 类食材组合", user: "火锅店老板", angle: "成本控制", product: "丸滑、小吃甜品、外卖组合", script: "痛点型口播" },
+    { title: "冬至前火锅店该提前备哪些高频食材", user: "后厨负责人", angle: "节气备货", product: "牛羊肉、锅底、小料", script: "清单型短视频" },
+    { title: "为什么采购只看单价，最后反而更贵", user: "餐饮采购负责人", angle: "采购避坑", product: "毛肚、鸭肠、规格标准", script: "避坑型脚本" },
+  ];
+
+  return (
+    <div className="static-decision-grid">
+      {ideas.map((idea) => (
+        <article key={idea.title}>
+          <span>{idea.user} / {idea.angle}</span>
+          <h3>{idea.title}</h3>
+          <p>产品关联：{idea.product}</p>
+          <small>脚本方向：{idea.script}</small>
+        </article>
+      ))}
+    </div>
+  );
+}
+
+function DashboardAiResult({ state }: { state: DashboardAiState }) {
+  const { result } = state;
+
+  return (
+    <div className="dashboard-ai-result">
+      <div className="dashboard-ai-result-head">
+        <div>
+          <span>{state.label}</span>
+          <h3>{result.summary}</h3>
+          <p>{result.matchedReason}</p>
+        </div>
+        <b className={`priority-pill priority-${result.matchScore}`}>{result.matchScore}匹配</b>
+      </div>
+
+      <div className="dashboard-ai-grid">
+        <div>
+          <h4>内容角度</h4>
+          <div className="chip-row">
+            {result.angles.map((angle) => (
+              <span className="chip" key={angle}>
+                {angle}
+              </span>
+            ))}
+          </div>
+        </div>
+        <div>
+          <h4>风险提醒</h4>
+          <ul>
+            {result.risks.map((risk) => (
+              <li key={risk}>{risk}</li>
+            ))}
+          </ul>
+        </div>
+      </div>
+
+      <div className="dashboard-ai-topic-list">
+        {result.topicIdeas.map((idea) => (
+          <article key={idea.title}>
+            <span>{idea.targetUser} · {idea.platform}</span>
+            <h4>{idea.title}</h4>
+            <p>{idea.coreView}</p>
+            <small>{idea.angle} / {idea.format}</small>
+          </article>
+        ))}
+      </div>
+
+      <div className="dashboard-ai-sources">
+        {result.sources.slice(0, 4).map((source) => (
+          <a href={source.url} key={source.url} rel="noreferrer" target="_blank">
+            {source.siteName || source.title}
+          </a>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function TopicCandidatePanel({
+  emptyText,
+  onConfirm,
+  onUpdate,
+  result,
+  title,
+}: {
+  emptyText: string;
+  onConfirm: (candidate: GeneratedTopicCandidate) => void;
+  onUpdate: (id: string, field: keyof GeneratedTopicCandidate, value: string | number) => void;
+  result: TopicCandidateGenerateResult | null;
+  title: string;
+}) {
+  if (!result) {
+    return null;
+  }
+
+  return (
+    <section className="panel topic-candidate-panel">
+      <div className="section-heading">
+        <div>
+          <h2>{title}</h2>
+          <span>{result.candidates.length > 0 ? `本轮生成 ${result.candidates.length} 条候选，确认后写入选题池` : emptyText}</span>
+        </div>
+      </div>
+      {result.candidates.length === 0 ? <p className="empty-text">{emptyText}</p> : null}
+      {result.candidates.length > 0 ? (
+        <div className="candidate-grid">
+          {result.candidates.map((candidate) => (
+            <article className="candidate-card" key={candidate.id}>
+              <div className="candidate-card-head">
+                <span>{candidate.topicCategory}</span>
+                <b>{candidate.recommendationScore}/100</b>
+              </div>
+              <label>
+                <span>标题</span>
+                <input onChange={(event) => onUpdate(candidate.id, "title", event.target.value)} value={candidate.title} />
+              </label>
+              <label>
+                <span>用户痛点</span>
+                <textarea
+                  onChange={(event) => onUpdate(candidate.id, "painPoint", event.target.value)}
+                  rows={2}
+                  value={candidate.painPoint}
+                />
+              </label>
+              <label>
+                <span>内容角度</span>
+                <textarea
+                  onChange={(event) => onUpdate(candidate.id, "angle", event.target.value)}
+                  rows={2}
+                  value={candidate.angle}
+                />
+              </label>
+              <label>
+                <span>业务关联</span>
+                <textarea
+                  onChange={(event) => onUpdate(candidate.id, "businessLink", event.target.value)}
+                  rows={2}
+                  value={candidate.businessLink}
+                />
+              </label>
+              <p>{candidate.coreView}</p>
+              <small>{candidate.hotSource}</small>
+              <div className="candidate-source-row">
+                {candidate.sourceUrls.map((url) => (
+                  <a href={url} key={url} rel="noreferrer" target="_blank">
+                    来源 <ExternalLink size={14} aria-hidden="true" />
+                  </a>
+                ))}
+              </div>
+              {candidate.risks.length > 0 ? (
+                <ul>
+                  {candidate.risks.map((risk) => (
+                    <li key={risk}>{risk}</li>
+                  ))}
+                </ul>
+              ) : null}
+              <button className="icon-button" onClick={() => onConfirm(candidate)} type="button">
+                <CheckCircle2 size={18} aria-hidden="true" />
+                <span>确认入池</span>
+              </button>
+            </article>
+          ))}
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
+function TopicsView({
+  column,
+  filteredTopics,
+  onStartProduction,
+  onTopicConfirmed,
+  query,
+  selectedTopic,
+  setColumn,
+  setContentStatus,
+  setQuery,
+  setSelectedTopicId,
+  setSourceFilter,
+  contentStatus,
+  sourceFilter,
+}: {
+  column: string;
+  filteredTopics: Topic[];
+  onStartProduction: (topicId: string) => void;
+  onTopicConfirmed: (topic: Topic) => void;
+  query: string;
+  selectedTopic: Topic;
+  setColumn: (value: string) => void;
+  setContentStatus: (value: ContentStatusFilter) => void;
+  setQuery: (value: string) => void;
+  setSelectedTopicId: (value: string) => void;
+  setSourceFilter: (value: SourceFilter) => void;
+  contentStatus: ContentStatusFilter;
+  sourceFilter: SourceFilter;
+}) {
+  const [candidateForm, setCandidateForm] = useState<TopicCandidateGenerateRequest>(defaultTopicCandidateForm);
+  const [candidateResult, setCandidateResult] = useState<TopicCandidateGenerateResult | null>(null);
+  const [candidateLoading, setCandidateLoading] = useState(false);
+  const [candidateError, setCandidateError] = useState("");
+  const [candidateMessage, setCandidateMessage] = useState("");
+  const [refreshResult, setRefreshResult] = useState<TopicCandidateGenerateResult | null>(null);
+  const [refreshLoading, setRefreshLoading] = useState(false);
+  const [refreshError, setRefreshError] = useState("");
+  const [refreshMessage, setRefreshMessage] = useState("");
+
+  const updateCandidateForm = (field: keyof TopicCandidateGenerateRequest, value: string | number) => {
+    setCandidateForm((current) => ({ ...current, [field]: value }));
+  };
+
+  const generateTopicCandidates = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setCandidateLoading(true);
+    setCandidateError("");
+    setCandidateMessage("");
+
+    try {
+      const response = await fetch("/api/topic-candidates/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(candidateForm),
+      });
+      const payload = await parseResearchResponse(response);
+
+      if (!response.ok) {
+        throw new Error(payload.error ?? "联网选题生成失败");
+      }
+
+      setCandidateResult(payload as TopicCandidateGenerateResult);
+    } catch (caught) {
+      setCandidateError(caught instanceof Error ? caught.message : "联网选题生成失败");
+    } finally {
+      setCandidateLoading(false);
+    }
+  };
+
+  const refreshTopicsFromFilters = async () => {
+    setRefreshLoading(true);
+    setRefreshError("");
+    setRefreshMessage("");
+
+    const payload: TopicRefreshRequest = {
+      query,
+      column,
+      sourceFilter,
+      contentStatus,
+      limit: 5,
+    };
+
+    try {
+      const response = await fetch("/api/topics/refresh", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const result = await parseResearchResponse(response);
+
+      if (!response.ok) {
+        throw new Error(result.error ?? "选题重调研失败");
+      }
+
+      setRefreshResult(result as TopicCandidateGenerateResult);
+      setRefreshMessage("已完成本轮联网重调研，请确认候选后再入池。");
+    } catch (caught) {
+      const message = caught instanceof Error ? caught.message : "选题重调研失败";
+      setRefreshError(
+        /本地服务未更新|\/api\/topics\/refresh/.test(message)
+          ? "当前运行中的本地服务还没有 /api/topics/refresh，请重启 npm run dev 后重试。"
+          : message,
+      );
+    } finally {
+      setRefreshLoading(false);
+    }
+  };
+
+  const updateCandidate = (id: string, field: keyof GeneratedTopicCandidate, value: string | number) => {
+    setCandidateResult((current) => {
+      if (!current) {
+        return current;
+      }
+
+      return {
+        ...current,
+        candidates: current.candidates.map((candidate) =>
+          candidate.id === id ? { ...candidate, [field]: value } : candidate,
+        ),
+      };
+    });
+  };
+
+  const updateRefreshCandidate = (id: string, field: keyof GeneratedTopicCandidate, value: string | number) => {
+    setRefreshResult((current) => {
+      if (!current) {
+        return current;
+      }
+
+      return {
+        ...current,
+        candidates: current.candidates.map((candidate) =>
+          candidate.id === id ? { ...candidate, [field]: value } : candidate,
+        ),
+      };
+    });
+  };
+
+  const confirmCandidate = async (candidate: GeneratedTopicCandidate, columnValue: string, source: "refresh" | "form") => {
+    setCandidateError("");
+    setCandidateMessage("");
+    setRefreshError("");
+    setRefreshMessage("");
+
+    try {
+      const response = await fetch("/api/topics/confirm", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...candidate, column: columnValue }),
+      });
+      const payload = await parseResearchResponse(response);
+
+      if (!response.ok) {
+        throw new Error(payload.error ?? "确认入池失败");
+      }
+
+      const topic = payload as Topic;
+      onTopicConfirmed(topic);
+      if (source === "refresh") {
+        setRefreshMessage(`已确认入池：${topic.title}`);
+        setRefreshResult((current) =>
+          current
+            ? {
+                ...current,
+                candidates: current.candidates.filter((item) => item.id !== candidate.id),
+              }
+            : current,
+        );
+      } else {
+        setCandidateMessage(`已确认入池：${topic.title}`);
+        setCandidateResult((current) =>
+          current
+            ? {
+                ...current,
+                candidates: current.candidates.filter((item) => item.id !== candidate.id),
+              }
+            : current,
+        );
+      }
+    } catch (caught) {
+      const message = caught instanceof Error ? caught.message : "确认入池失败";
+      if (source === "refresh") {
+        setRefreshError(message);
+      } else {
+        setCandidateError(message);
+      }
+    }
+  };
+
+  return (
+    <section className="topics-workspace">
+      <div className="topics-layout">
+        <div className="topic-list-panel">
+          <div className="topics-toolbar">
+            <div className="topics-toolbar-copy">
+              <strong>联网重调研</strong>
+              <span>按当前筛选条件调用 Tavily + DeepSeek，生成待确认的新候选。</span>
+            </div>
+            <div className="topics-toolbar-actions">
+              <button className="icon-button filter-refresh-button" disabled={refreshLoading} onClick={refreshTopicsFromFilters} type="button">
+                {refreshLoading ? <Loader2 className="spin-icon" size={18} aria-hidden="true" /> : <Sparkles size={18} aria-hidden="true" />}
+                <span>{refreshLoading ? "调研中" : "重新调研"}</span>
+              </button>
+            </div>
+          </div>
+          <div className="filter-row">
+            <label className="search-box">
+              <Search size={18} aria-hidden="true" />
+              <input
+                aria-label="搜索选题"
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="搜索标题、痛点、观点"
+                value={query}
+              />
+            </label>
+            <label className="filter-select">
+              <span>内容栏目</span>
+              <select aria-label="筛选内容栏目" onChange={(event) => setColumn(event.target.value)} value={column}>
+                <option value="全部栏目">全部栏目</option>
+                {columnFilterOptions.map((item) => (
+                  <option key={item.value} value={item.value}>
+                    {item.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="filter-select">
+              <span>选题来源</span>
+              <select
+                aria-label="筛选选题来源"
+                onChange={(event) => setSourceFilter(event.target.value as SourceFilter)}
+                value={sourceFilter}
+              >
+                <option value="全部来源">全部来源</option>
+                {sourceFilterOptions.map((item) => (
+                  <option key={item}>{item}</option>
+                ))}
+              </select>
+            </label>
+            <label className="filter-select">
+              <span>内容状态</span>
+              <select
+                aria-label="筛选内容状态"
+                onChange={(event) => setContentStatus(event.target.value as ContentStatusFilter)}
+                value={contentStatus}
+              >
+                <option value="全部状态">全部状态</option>
+                {contentStatusOptions.map((item) => (
+                  <option key={item}>{item}</option>
+                ))}
+              </select>
+            </label>
+          </div>
+          {refreshError ? <div className="research-error">{refreshError}</div> : null}
+          {refreshMessage ? <div className="topic-confirm-message">{refreshMessage}</div> : null}
+
+          <TopicCandidatePanel
+            emptyText="当前筛选条件下没有生成新的候选选题，可以换个关键词或栏目再试。"
+            onConfirm={(candidate) => confirmCandidate(candidate, refreshResult?.request.column ?? candidateForm.column, "refresh")}
+            onUpdate={updateRefreshCandidate}
+            result={refreshResult}
+            title="联网候选，待确认入池"
+          />
+
+          <div className="topic-list" aria-live="polite">
+            {filteredTopics.map((topic) => (
+              <article
+                className={`topic-row ${selectedTopic.id === topic.id ? "active" : ""}`}
+                key={topic.id}
+              >
+                <button className="topic-row-main" onClick={() => setSelectedTopicId(topic.id)} type="button">
+                  <span className="topic-title">{topic.title}</span>
+                  <span className="topic-meta">
+                    {getColumnLabel(topic.column)}｜{getSourceLabel(topic)}｜{getContentStatusLabel(topic)}
+                  </span>
+                  <span className="topic-summary">{topic.coreView}</span>
+                  <span className="topic-footnote">
+                    {topic.platform} · {topic.format}
+                  </span>
+                </button>
+                <button className="inline-ai-button" onClick={() => onStartProduction(topic.id)} type="button">
+                  进入生产
+                </button>
+              </article>
+            ))}
+          </div>
+        </div>
+
+        <article className="detail-panel">
+          <div className="detail-header">
+            <div className="tag-row">
+              <span className="tag">{getColumnLabel(selectedTopic.column)}</span>
+              <span className="tag">{getSourceLabel(selectedTopic)}</span>
+              <span className="tag">{getContentStatusLabel(selectedTopic)}</span>
+              {selectedTopic.aiGenerated ? <span className="tag">AI生成</span> : null}
+            </div>
+            <h2>{selectedTopic.title}</h2>
+            <p>{selectedTopic.coreView}</p>
+            <button className="icon-button" onClick={() => onStartProduction(selectedTopic.id)} type="button">
+              <Clapperboard size={18} aria-hidden="true" />
+              <span>进入内容生产</span>
+            </button>
+          </div>
+          <dl className="detail-grid">
+            <Detail label="内容栏目" value={getColumnLabel(selectedTopic.column)} />
+            <Detail label="选题来源" value={getSourceLabel(selectedTopic)} />
+            <Detail label="内容状态" value={getContentStatusLabel(selectedTopic)} />
+            <Detail label="目标用户" value={selectedTopic.targetUser} />
+            <Detail label="适合发布平台" value={selectedTopic.platform} />
+            <Detail label="建议内容形式" value={selectedTopic.format} />
+            <Detail label="用户痛点" value={selectedTopic.painPoint} />
+            <Detail label="业务关联" value={selectedTopic.businessLink} />
+            <Detail label="热点来源" value={selectedTopic.hotSource} />
+            <Detail label="内容角度" value={selectedTopic.angle} />
+            <Detail label="推荐分数" value={selectedTopic.recommendationScore ? `${selectedTopic.recommendationScore}/100` : "手动选题"} />
+            <Detail label="复盘结论" value={selectedTopic.review} />
+          </dl>
+          {selectedTopic.sourceUrls?.length ? (
+            <div className="topic-source-links">
+              {selectedTopic.sourceUrls.map((url) => (
+                <a href={url} key={url} rel="noreferrer" target="_blank">
+                  来源 <ExternalLink size={14} aria-hidden="true" />
+                </a>
+              ))}
+            </div>
+          ) : null}
+          {selectedTopic.riskNotes?.length ? (
+            <ul className="topic-risk-list">
+              {selectedTopic.riskNotes.map((risk) => (
+                <li key={risk}>{risk}</li>
+              ))}
+            </ul>
+          ) : null}
+          <div className="publish-strip">
+            <Metric label="播放" value={formatNumber(selectedTopic.publishData.views)} detail="views" />
+            <Metric label="点赞" value={formatNumber(selectedTopic.publishData.likes)} detail="likes" />
+            <Metric label="收藏" value={formatNumber(selectedTopic.publishData.saves)} detail="saves" />
+            <Metric label="转化" value={formatNumber(selectedTopic.publishData.conversions)} detail="leads" />
+          </div>
+        </article>
+      </div>
+
+      <section className="panel topic-generator-panel">
+        <div className="section-heading">
+          <div>
+            <h2>联网选题</h2>
+            <span>公开网页聚合 + AI 归纳评分，人工确认后写入选题池</span>
+          </div>
+        </div>
+        <form className="topic-generator-form" onSubmit={generateTopicCandidates}>
+          <label>
+            <span>选题类型</span>
+            <select
+              onChange={(event) => updateCandidateForm("category", event.target.value as TopicCategory)}
+              value={candidateForm.category}
+            >
+              {topicCategories.map((item) => (
+                <option key={item}>{item}</option>
+              ))}
+            </select>
+          </label>
+          <label>
+            <span>调研关键词</span>
+            <input
+              onChange={(event) => updateCandidateForm("query", event.target.value)}
+              placeholder="例如：端午火锅备货、夏季小吃爆品"
+              required
+              value={candidateForm.query}
+            />
+          </label>
+          <label>
+            <span>适配栏目</span>
+            <select onChange={(event) => updateCandidateForm("column", event.target.value)} value={candidateForm.column}>
+              {data.columns.map((item) => (
+                <option key={item}>{item}</option>
+              ))}
+            </select>
+          </label>
+          <label>
+            <span>目标用户</span>
+            <input
+              onChange={(event) => updateCandidateForm("targetUser", event.target.value)}
+              value={candidateForm.targetUser}
+            />
+          </label>
+          <label>
+            <span>时间范围</span>
+            <select
+              onChange={(event) => updateCandidateForm("freshness", event.target.value as ResearchFreshness)}
+              value={candidateForm.freshness}
+            >
+              {freshnessOptions.map((item) => (
+                <option key={item.value} value={item.value}>
+                  {item.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            <span>数量</span>
+            <input
+              max={8}
+              min={1}
+              onChange={(event) => updateCandidateForm("limit", Number(event.target.value))}
+              type="number"
+              value={candidateForm.limit}
+            />
+          </label>
+          <label className="topic-generator-notes">
+            <span>补充说明</span>
+            <textarea
+              onChange={(event) => updateCandidateForm("notes", event.target.value)}
+              placeholder="可以补充产品、地区、平台偏好或避开的方向"
+              rows={3}
+              value={candidateForm.notes}
+            />
+          </label>
+          <button className="icon-button" disabled={candidateLoading} type="submit">
+            {candidateLoading ? <Loader2 className="spin-icon" size={18} aria-hidden="true" /> : <Sparkles size={18} aria-hidden="true" />}
+            <span>{candidateLoading ? "生成中" : "生成候选"}</span>
+          </button>
+        </form>
+
+        {candidateError ? <div className="research-error">{candidateError}</div> : null}
+        {candidateMessage ? <div className="topic-confirm-message">{candidateMessage}</div> : null}
+        <TopicCandidatePanel
+          emptyText="本轮联网选题没有生成新的候选，可调整关键词或时间范围后重试。"
+          onConfirm={(candidate) => confirmCandidate(candidate, candidateForm.column, "form")}
+          onUpdate={updateCandidate}
+          result={candidateResult}
+          title="详细联网候选"
+        />
+      </section>
+    </section>
+  );
+}
+
+function ProductionView({
+  onProductionSaved,
+  productionTopicId,
+  productionTopicIds,
+  productions,
+  removeProductionTopic,
+  setProductionTopicId,
+  topics,
+}: {
+  onProductionSaved: (production: ContentProduction, review: ReviewRecord | null, topic: Topic | null) => void;
+  productionTopicId: string;
+  productionTopicIds: string[];
+  productions: ContentProduction[];
+  removeProductionTopic: (topicId: string) => void;
+  setProductionTopicId: (topicId: string) => void;
+  topics: Topic[];
+}) {
+  const visibleTopics = productionTopicIds
+    .map((topicId) => topics.find((topic) => topic.id === topicId))
+    .filter((topic): topic is Topic => Boolean(topic));
+  const selectedTopic = visibleTopics.find((topic) => topic.id === productionTopicId) ?? visibleTopics[0];
+  const [production, setProduction] = useState<ContentProduction>(() =>
+    productions.find((item) => item.topicId === selectedTopic?.id) ?? emptyProduction(selectedTopic?.id ?? ""),
+  );
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+  const [loadingAction, setLoadingAction] = useState("");
+
+  useEffect(() => {
+    if (!selectedTopic) {
+      return;
+    }
+    setProduction(productions.find((item) => item.topicId === selectedTopic.id) ?? emptyProduction(selectedTopic.id));
+    setMessage("");
+    setError("");
+  }, [productions, selectedTopic]);
+
+  const selectedTemplate =
+    data.scriptTemplates.find((template) => template.id === production.selectedTemplateId) ??
+    data.scriptTemplates[0];
+
+  const patchProduction = (patch: Partial<ContentProduction>) => {
+    setProduction((current) => ({ ...current, ...patch }));
+  };
+
+  const patchScriptDraft = (field: keyof ContentProduction["scriptDraft"], value: string) => {
+    setProduction((current) => ({
+      ...current,
+      scriptDraft: { ...current.scriptDraft, [field]: value },
+    }));
+  };
+
+  const patchPublishDraft = (
+    field: keyof ContentProduction["publishDraft"],
+    value: string | string[] | ContentProduction["publishDraft"]["platformCopies"],
+  ) => {
+    setProduction((current) => ({
+      ...current,
+      publishDraft: { ...current.publishDraft, [field]: value },
+    }));
+  };
+
+  const patchReviewDraft = (field: keyof ContentProduction["reviewDraft"], value: string | number) => {
+    setProduction((current) => ({
+      ...current,
+      reviewDraft: { ...current.reviewDraft, [field]: value },
+    }));
+  };
+
+  const updateMaterialBucket = (field: keyof ContentProduction["matchedMaterials"], value: string, checked: boolean) => {
+    setProduction((current) => {
+      const currentItems = current.matchedMaterials[field];
+      const nextItems = checked ? [...currentItems, value] : currentItems.filter((item) => item !== value);
+      return {
+        ...current,
+        matchedMaterials: { ...current.matchedMaterials, [field]: nextItems },
+      };
+    });
+  };
+
+  const saveProduction = async (nextProduction = production) => {
+    setLoadingAction("save");
+    setError("");
+    setMessage("");
+
+    try {
+      const response = await fetch("/api/production/save", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(nextProduction),
+      });
+      const payload = await parseResearchResponse(response);
+
+      if (!response.ok) {
+        throw new Error(payload.error ?? "保存生产进度失败");
+      }
+
+      setProduction(payload.production as ContentProduction);
+      onProductionSaved(
+        payload.production as ContentProduction,
+        (payload.review as ReviewRecord | null) ?? null,
+        (payload.topic as Topic | null) ?? null,
+      );
+      setMessage("生产进度已保存");
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "保存生产进度失败");
+    } finally {
+      setLoadingAction("");
+    }
+  };
+
+  const runProductionResearch = async () => {
+    setLoadingAction("research");
+    setError("");
+    setMessage("");
+
+    try {
+      const response = await fetch("/api/production/research", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ topicId: selectedTopic.id, notes: production.researchNotes }),
+      });
+      const payload = await parseResearchResponse(response);
+
+      if (!response.ok) {
+        throw new Error(payload.error ?? "联网调研失败");
+      }
+
+      const result = payload as ResearchResult;
+      patchProduction({
+        currentStep: "research",
+        researchNotes: [
+          result.summary,
+          result.matchedReason,
+          ...result.angles.map((angle) => `- ${angle}`),
+          ...result.risks.map((risk) => `风险：${risk}`),
+        ].join("\n"),
+      });
+      setMessage("调研依据已生成，可继续人工补充");
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "联网调研失败");
+    } finally {
+      setLoadingAction("");
+    }
+  };
+
+  const generateScript = async () => {
+    setLoadingAction("script");
+    setError("");
+    setMessage("");
+
+    try {
+      const response = await fetch("/api/production/generate-script", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(production),
+      });
+      const payload = await parseResearchResponse(response);
+
+      if (!response.ok) {
+        throw new Error(payload.error ?? "脚本生成失败");
+      }
+
+      patchProduction({ currentStep: "script", scriptDraft: payload as ContentProduction["scriptDraft"] });
+      setMessage("脚本草稿已生成");
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "脚本生成失败");
+    } finally {
+      setLoadingAction("");
+    }
+  };
+
+  const generatePublish = async () => {
+    setLoadingAction("publish");
+    setError("");
+    setMessage("");
+
+    try {
+      const response = await fetch("/api/production/generate-publish", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(production),
+      });
+      const payload = await parseResearchResponse(response);
+
+      if (!response.ok) {
+        throw new Error(payload.error ?? "发布文案生成失败");
+      }
+
+      patchProduction({ currentStep: "publish", publishDraft: payload as ContentProduction["publishDraft"] });
+      setMessage("发布文案已生成");
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "发布文案生成失败");
+    } finally {
+      setLoadingAction("");
+    }
+  };
+
+  const saveCurrentStep = () => saveProduction(production);
+
+  return (
+    <section className="production-layout">
+      <aside className="panel production-sidebar">
+        <div className="section-heading">
+          <div>
+            <h2>内容生产流程</h2>
+            <span>从选题到复盘</span>
+          </div>
+        </div>
+        <div className="production-topic-picker">
+          <span>当前选题</span>
+          {visibleTopics.length > 0 ? (
+            <div className="production-topic-control">
+              <select
+                aria-label="当前选题"
+                onChange={(event) => setProductionTopicId(event.target.value)}
+                value={selectedTopic?.id ?? ""}
+              >
+                {visibleTopics.map((topic) => (
+                  <option key={topic.id} value={topic.id}>
+                    {topic.title}
+                  </option>
+                ))}
+              </select>
+              <button
+                aria-label={selectedTopic ? `将《${selectedTopic.title}》移出内容生产台` : "移出当前选题"}
+                className="ghost-button production-topic-delete"
+                disabled={!selectedTopic}
+                onClick={() => {
+                  if (selectedTopic) {
+                    removeProductionTopic(selectedTopic.id);
+                  }
+                }}
+                title="移出当前选题"
+                type="button"
+              >
+                <Trash2 size={16} aria-hidden="true" />
+              </button>
+            </div>
+          ) : (
+            <p className="production-empty-note">暂无当前选题，可从选题池加入。</p>
+          )}
+        </div>
+        {selectedTopic ? (
+          <>
+            <div className="production-step-list">
+              {productionSteps.map((step, index) => (
+                <button
+                  className={`production-step ${production.currentStep === step.id ? "active" : ""}`}
+                  key={step.id}
+                  onClick={() => patchProduction({ currentStep: step.id })}
+                  type="button"
+                >
+                  <b>{index + 1}</b>
+                  <div className="production-step-copy">
+                    <span>{step.label}</span>
+                    <small>{step.description}</small>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </>
+        ) : null}
+        <button className="icon-button" disabled={!selectedTopic || loadingAction === "save"} onClick={saveCurrentStep} type="button">
+          {loadingAction === "save" ? <Loader2 className="spin-icon" size={18} aria-hidden="true" /> : <CheckCircle2 size={18} aria-hidden="true" />}
+          <span>{loadingAction === "save" ? "保存中" : "保存进度"}</span>
+        </button>
+      </aside>
+
+      <main className="panel production-main">
+        {!selectedTopic ? (
+          <section className="production-empty">
+            <h2>先从选题池选择一个选题</h2>
+            <p>内容生产台会围绕一个选题推进调研、脚本、素材、发布和复盘。你也可以先清理当前列表，再从选题池重新加入需要推进的选题。</p>
+          </section>
+        ) : (
+          <>
+            <div className="production-main-head">
+              <div>
+                <p className="eyebrow">{getColumnLabel(selectedTopic.column)} / {getSourceLabel(selectedTopic)}</p>
+                <h2>{selectedTopic.title}</h2>
+                <p>{selectedTopic.coreView}</p>
+              </div>
+              <span className="tag">{productionSteps.find((step) => step.id === production.currentStep)?.label}</span>
+            </div>
+
+            {error ? <div className="research-error">{error}</div> : null}
+            {message ? <div className="topic-confirm-message">{message}</div> : null}
+
+            {production.currentStep === "topic" ? (
+          <div className="production-section">
+            <dl className="detail-grid">
+              <Detail label="标题" value={selectedTopic.title} />
+              <Detail label="内容栏目" value={getColumnLabel(selectedTopic.column)} />
+              <Detail label="选题来源" value={getSourceLabel(selectedTopic)} />
+              <Detail label="内容状态" value={getContentStatusLabel(selectedTopic)} />
+              <Detail label="核心观点" value={selectedTopic.coreView} />
+              <Detail label="目标用户" value={selectedTopic.targetUser} />
+              <Detail label="用户痛点" value={selectedTopic.painPoint} />
+              <Detail label="业务关联" value={selectedTopic.businessLink} />
+            </dl>
+          </div>
+            ) : null}
+
+            {production.currentStep === "research" ? (
+          <div className="production-section">
+            <div className="section-heading">
+              <div>
+                <h2>调研依据</h2>
+                <span>行业热点、节气节点、用户痛点、产品卖点</span>
+              </div>
+              <button className="icon-button" disabled={loadingAction === "research"} onClick={runProductionResearch} type="button">
+                {loadingAction === "research" ? <Loader2 className="spin-icon" size={18} aria-hidden="true" /> : <Globe2 size={18} aria-hidden="true" />}
+                <span>{loadingAction === "research" ? "调研中" : "联网补充"}</span>
+              </button>
+            </div>
+            <textarea
+              onChange={(event) => patchProduction({ researchNotes: event.target.value })}
+              placeholder="补充行业热点、节气节点、用户痛点、产品卖点等依据"
+              rows={12}
+              value={production.researchNotes}
+            />
+          </div>
+            ) : null}
+
+            {production.currentStep === "template" ? (
+          <div className="production-section">
+            <div className="template-choice-grid">
+              {(data.scriptTemplates as ScriptTemplate[]).map((template) => (
+                <button
+                  className={`template-choice ${production.selectedTemplateId === template.id ? "active" : ""}`}
+                  key={template.id}
+                  onClick={() => patchProduction({ selectedTemplateId: template.id })}
+                  type="button"
+                >
+                  <strong>{template.name === "爆品推荐型脚本" ? "种草型脚本" : template.name}</strong>
+                  <span>{template.scenario}</span>
+                  <small>{template.steps.join(" / ")}</small>
+                </button>
+              ))}
+            </div>
+            <blockquote>{selectedTemplate.opener}</blockquote>
+          </div>
+            ) : null}
+
+            {production.currentStep === "script" ? (
+          <div className="production-section">
+            <div className="section-heading">
+              <div>
+                <h2>短视频脚本</h2>
+                <span>开头、正文结构、结尾、口播文案</span>
+              </div>
+              <button className="icon-button" disabled={loadingAction === "script"} onClick={generateScript} type="button">
+                {loadingAction === "script" ? <Loader2 className="spin-icon" size={18} aria-hidden="true" /> : <Sparkles size={18} aria-hidden="true" />}
+                <span>{loadingAction === "script" ? "生成中" : "AI 生成脚本"}</span>
+              </button>
+            </div>
+            <ProductionTextarea label="开头" rows={2} value={production.scriptDraft.opener} onChange={(value) => patchScriptDraft("opener", value)} />
+            <ProductionTextarea label="正文结构" rows={5} value={production.scriptDraft.structure} onChange={(value) => patchScriptDraft("structure", value)} />
+            <ProductionTextarea label="结尾" rows={2} value={production.scriptDraft.ending} onChange={(value) => patchScriptDraft("ending", value)} />
+            <ProductionTextarea label="口播文案" rows={10} value={production.scriptDraft.voiceover} onChange={(value) => patchScriptDraft("voiceover", value)} />
+          </div>
+            ) : null}
+
+            {production.currentStep === "materials" ? (
+          <div className="production-section">
+            <div className="material-match-grid">
+              <MaterialChecklist
+                field="productImages"
+                label="产品图"
+                items={data.materials.find((item) => item.title === "产品资料")?.items ?? []}
+                production={production}
+                updateMaterialBucket={updateMaterialBucket}
+              />
+              <MaterialChecklist
+                field="storeScenes"
+                label="门店场景"
+                items={data.materials.find((item) => item.title === "案例素材")?.items ?? []}
+                production={production}
+                updateMaterialBucket={updateMaterialBucket}
+              />
+              <MaterialChecklist
+                field="foodShots"
+                label="食材画面"
+                items={["产品近景", "下锅画面", "出餐画面", "后厨备货", "套餐组合"]}
+                production={production}
+                updateMaterialBucket={updateMaterialBucket}
+              />
+              <MaterialChecklist
+                field="coverReferences"
+                label="封面参考"
+                items={["避坑标题封面", "清单型封面", "产品对比封面", "经营观点封面"]}
+                production={production}
+                updateMaterialBucket={updateMaterialBucket}
+              />
+            </div>
+          </div>
+            ) : null}
+
+            {production.currentStep === "publish" ? (
+          <div className="production-section">
+            <div className="section-heading">
+              <div>
+                <h2>发布内容</h2>
+                <span>标题、简介、话题标签、平台适配文案</span>
+              </div>
+              <button className="icon-button" disabled={loadingAction === "publish"} onClick={generatePublish} type="button">
+                {loadingAction === "publish" ? <Loader2 className="spin-icon" size={18} aria-hidden="true" /> : <Sparkles size={18} aria-hidden="true" />}
+                <span>{loadingAction === "publish" ? "生成中" : "AI 生成发布文案"}</span>
+              </button>
+            </div>
+            <ProductionTextarea label="发布标题" rows={2} value={production.publishDraft.title} onChange={(value) => patchPublishDraft("title", value)} />
+            <ProductionTextarea label="简介" rows={4} value={production.publishDraft.description} onChange={(value) => patchPublishDraft("description", value)} />
+            <ProductionTextarea
+              label="话题标签"
+              rows={2}
+              value={production.publishDraft.hashtags.join("，")}
+              onChange={(value) => patchPublishDraft("hashtags", value.split(/[，,]/).map((item) => item.trim()).filter(Boolean))}
+            />
+            <ProductionTextarea
+              label="平台适配文案"
+              rows={8}
+              value={production.publishDraft.platformCopies.map((item) => `${item.platform}：${item.copy}`).join("\n")}
+              onChange={(value) =>
+                patchPublishDraft(
+                  "platformCopies",
+                  value
+                    .split("\n")
+                    .map((line) => {
+                      const [platform, ...copyParts] = line.split(/：|:/);
+                      return { platform: platform?.trim() || "通用", copy: copyParts.join("：").trim() };
+                    })
+                    .filter((item) => item.copy),
+                )
+              }
+            />
+          </div>
+            ) : null}
+
+            {production.currentStep === "review" ? (
+          <div className="production-section">
+            <div className="review-form-grid">
+              <label>
+                <span>发布日期</span>
+                <input type="date" value={production.reviewDraft.publishDate} onChange={(event) => patchReviewDraft("publishDate", event.target.value)} />
+              </label>
+              <label>
+                <span>平台</span>
+                <input value={production.reviewDraft.platform} onChange={(event) => patchReviewDraft("platform", event.target.value)} />
+              </label>
+              {(["views", "likes", "comments", "saves", "shares", "leads"] as const).map((field) => (
+                <label key={field}>
+                  <span>{reviewFieldLabel[field]}</span>
+                  <input
+                    min={0}
+                    type="number"
+                    value={production.reviewDraft[field]}
+                    onChange={(event) => patchReviewDraft(field, Number(event.target.value))}
+                  />
+                </label>
+              ))}
+            </div>
+            <ProductionTextarea
+              label="优化建议"
+              rows={5}
+              value={production.reviewDraft.optimization}
+              onChange={(value) => patchReviewDraft("optimization", value)}
+            />
+          </div>
+            ) : null}
+          </>
+        )}
+      </main>
+    </section>
+  );
+}
+
+const reviewFieldLabel = {
+  views: "播放量",
+  likes: "点赞",
+  comments: "评论",
+  saves: "收藏",
+  shares: "转发",
+  leads: "线索数量",
+};
+
+function ProductionTextarea({
+  label,
+  onChange,
+  rows,
+  value,
+}: {
+  label: string;
+  onChange: (value: string) => void;
+  rows: number;
+  value: string;
+}) {
+  return (
+    <label className="production-field">
+      <span>{label}</span>
+      <textarea onChange={(event) => onChange(event.target.value)} rows={rows} value={value} />
+    </label>
+  );
+}
+
+function MaterialChecklist({
+  field,
+  items,
+  label,
+  production,
+  updateMaterialBucket,
+}: {
+  field: keyof ContentProduction["matchedMaterials"];
+  items: string[];
+  label: string;
+  production: ContentProduction;
+  updateMaterialBucket: (field: keyof ContentProduction["matchedMaterials"], value: string, checked: boolean) => void;
+}) {
+  const selectedItems = production.matchedMaterials[field];
+
+  return (
+    <div className="material-match-card">
+      <h3>{label}</h3>
+      {items.map((item) => (
+        <label key={item}>
+          <input
+            checked={selectedItems.includes(item)}
+            onChange={(event) => updateMaterialBucket(field, item, event.target.checked)}
+            type="checkbox"
+          />
+          <span>{item}</span>
+        </label>
+      ))}
+    </div>
+  );
+}
+
+function ResearchView() {
+  const [form, setForm] = useState<ResearchRequest>(defaultResearchForm);
+  const [history, setHistory] = useState<ResearchResult[]>([]);
+  const [activeResult, setActiveResult] = useState<ResearchResult | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem(researchHistoryKey);
+      if (!saved) {
+        return;
+      }
+      const parsed = JSON.parse(saved) as ResearchResult[];
+      if (Array.isArray(parsed)) {
+        setHistory(parsed);
+        setActiveResult(parsed[0] ?? null);
+      }
+    } catch {
+      window.localStorage.removeItem(researchHistoryKey);
+    }
+  }, []);
+
+  const saveHistory = (items: ResearchResult[]) => {
+    setHistory(items);
+    window.localStorage.setItem(researchHistoryKey, JSON.stringify(items));
+  };
+
+  const updateForm = (field: keyof ResearchRequest, value: string) => {
+    setForm((current) => ({ ...current, [field]: value }));
+  };
+
+  const submitResearch = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setError("");
+    setIsLoading(true);
+
+    try {
+      const response = await fetch("/api/research", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+      const payload = await parseResearchResponse(response);
+
+      if (!response.ok) {
+        throw new Error(payload.error ?? "调研请求失败");
+      }
+
+      const result = payload as ResearchResult;
+      const nextHistory = [result, ...history.filter((item) => item.id !== result.id)].slice(0, 12);
+      setActiveResult(result);
+      saveHistory(nextHistory);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "调研请求失败");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const clearHistory = () => {
+    setHistory([]);
+    setActiveResult(null);
+    window.localStorage.removeItem(researchHistoryKey);
+  };
+
+  return (
+    <section className="research-layout">
+      <form className="panel research-form" onSubmit={submitResearch}>
+        <div className="section-heading">
+          <div>
+            <h2>联网调研助手</h2>
+            <span>搜索实时信息，再生成 B 端内容判断</span>
+          </div>
+          <button className="icon-button" disabled={isLoading} type="submit">
+            {isLoading ? <Loader2 className="spin-icon" size={18} aria-hidden="true" /> : <Search size={18} aria-hidden="true" />}
+            <span>{isLoading ? "调研中" : "开始调研"}</span>
+          </button>
+        </div>
+
+        <label>
+          <span>调研主题</span>
+          <input
+            onChange={(event) => updateForm("query", event.target.value)}
+            placeholder="例如：夏季火锅淡季拉客"
+            required
+            value={form.query}
+          />
+        </label>
+
+        <div className="research-form-grid">
+          <label>
+            <span>目标用户</span>
+            <input
+              onChange={(event) => updateForm("targetUser", event.target.value)}
+              placeholder="例如：火锅店老板"
+              value={form.targetUser}
+            />
+          </label>
+          <label>
+            <span>适配栏目</span>
+            <select onChange={(event) => updateForm("column", event.target.value)} value={form.column}>
+              {data.columns.map((item) => (
+                <option key={item}>{item}</option>
+              ))}
+            </select>
+          </label>
+          <label>
+            <span>时间范围</span>
+            <select
+              onChange={(event) => updateForm("freshness", event.target.value as ResearchFreshness)}
+              value={form.freshness}
+            >
+              {freshnessOptions.map((item) => (
+                <option key={item.value} value={item.value}>
+                  {item.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+
+        <label>
+          <span>补充说明</span>
+          <textarea
+            onChange={(event) => updateForm("notes", event.target.value)}
+            placeholder="可以补充地区、平台、想避开的方向、已知产品资料等"
+            rows={4}
+            value={form.notes}
+          />
+        </label>
+
+        {error ? <div className="research-error">{error}</div> : null}
+      </form>
+
+      <aside className="panel research-history">
+        <div className="section-heading">
+          <div>
+            <h2>调研历史</h2>
+            <span>保存在当前浏览器</span>
+          </div>
+          <button className="ghost-button" disabled={history.length === 0} onClick={clearHistory} type="button" title="清空历史">
+            <Trash2 size={17} aria-hidden="true" />
+          </button>
+        </div>
+        <div className="history-list">
+          {history.length === 0 ? <p className="empty-text">暂无调研记录。</p> : null}
+          {history.map((item) => (
+            <button
+              className={`history-row ${activeResult?.id === item.id ? "active" : ""}`}
+              key={item.id}
+              onClick={() => setActiveResult(item)}
+              type="button"
+            >
+              <strong>{item.request.query}</strong>
+              <span>
+                {item.matchScore}匹配 · {new Date(item.createdAt).toLocaleString("zh-CN")}
+              </span>
+            </button>
+          ))}
+        </div>
+      </aside>
+
+      <ResearchResultPanel result={activeResult} />
+    </section>
+  );
+}
+
+async function parseResearchResponse(response: Response) {
+  const text = await response.text();
+
+  if (!text.trim()) {
+    if (response.status === 404) {
+      throw new Error("本地服务未更新，当前运行中的后端还没有对应接口，请重启 npm run dev 后重试。");
+    }
+
+    throw new Error("服务没有返回内容，请确认本地服务仍在运行。");
+  }
+
+  try {
+    return JSON.parse(text);
+  } catch {
+    const preview = text.replace(/\s+/g, " ").trim().slice(0, 180);
+    throw new Error(`服务返回了非 JSON 内容：${preview || "空内容"}`);
+  }
+}
+
+function ResearchResultPanel({ result }: { result: ResearchResult | null }) {
+  if (!result) {
+    return (
+      <section className="panel research-result empty-result">
+        <p className="eyebrow">Research Output</p>
+        <h2>输入一个热点或行业问题，先查来源，再判断能不能做成内容</h2>
+        <p>结果会包含账号匹配度、内容角度、选题建议、风险提醒和引用来源。</p>
+      </section>
+    );
+  }
+
+  return (
+    <section className="panel research-result">
+      <div className="section-heading">
+        <div>
+          <h2>{result.request.query}</h2>
+          <span>{result.request.targetUser} / {result.request.column}</span>
+        </div>
+        <b className={`priority-pill priority-${result.matchScore}`}>{result.matchScore}匹配</b>
+      </div>
+
+      <div className="research-summary">
+        <p>{result.summary}</p>
+        <small>{result.matchedReason}</small>
+      </div>
+
+      <div className="research-block">
+        <h3>适合角度</h3>
+        <div className="chip-row">
+          {result.angles.map((angle) => (
+            <span className="chip" key={angle}>
+              {angle}
+            </span>
+          ))}
+        </div>
+      </div>
+
+      <div className="research-block">
+        <h3>可执行选题</h3>
+        <div className="topic-idea-grid">
+          {result.topicIdeas.map((idea) => (
+            <article className="topic-idea-card" key={idea.title}>
+              <span>{idea.targetUser} · {idea.platform}</span>
+              <h4>{idea.title}</h4>
+              <p>{idea.coreView}</p>
+              <small>{idea.angle} / {idea.format}</small>
+            </article>
+          ))}
+        </div>
+      </div>
+
+      <div className="research-block">
+        <h3>风险提醒</h3>
+        <ul className="risk-list">
+          {result.risks.map((risk) => (
+            <li key={risk}>{risk}</li>
+          ))}
+        </ul>
+      </div>
+
+      <div className="research-block">
+        <h3>引用来源</h3>
+        <div className="source-list">
+          {result.sources.map((source) => (
+            <a href={source.url} key={source.url} rel="noreferrer" target="_blank">
+              <span>{source.siteName || source.url}</span>
+              <strong>{source.title}</strong>
+              <p>{source.summary || source.snippet}</p>
+              <ExternalLink size={16} aria-hidden="true" />
+            </a>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function ScriptsView() {
+  return (
+    <section className="template-grid">
+      {data.scriptTemplates.map((template) => (
+        <article className="panel template-card" key={template.id}>
+          <div className="section-heading">
+            <h2>{template.name}</h2>
+            <span>{template.platforms.join(" / ")}</span>
+          </div>
+          <p>{template.scenario}</p>
+          <ol>
+            {template.steps.map((step) => (
+              <li key={step}>{step}</li>
+            ))}
+          </ol>
+          <blockquote>{template.opener}</blockquote>
+        </article>
+      ))}
+    </section>
+  );
+}
+
+function PromptsView({
+  copiedPromptId,
+  copyPrompt,
+}: {
+  copiedPromptId: string;
+  copyPrompt: (prompt: PromptTemplate) => void;
+}) {
+  return (
+    <section className="prompt-list">
+      {data.prompts.map((prompt) => (
+        <article className="panel prompt-card" key={prompt.id}>
+          <div className="section-heading">
+            <div>
+              <h2>{prompt.purpose}</h2>
+              <span>适用对象：{prompt.audience}</span>
+            </div>
+            <button className="icon-button" onClick={() => copyPrompt(prompt)} title="复制提示词" type="button">
+              <Clipboard size={18} aria-hidden="true" />
+              <span>{copiedPromptId === prompt.id ? "已复制" : "复制"}</span>
+            </button>
+          </div>
+          <p>{prompt.body}</p>
+          <div className="chip-row">
+            {prompt.outputFields.map((field) => (
+              <span className="chip" key={field}>
+                {field}
+              </span>
+            ))}
+          </div>
+        </article>
+      ))}
+    </section>
+  );
+}
+
+function MaterialsView() {
+  return (
+    <section className="template-grid">
+      {data.materials.map((section) => (
+        <article className="panel material-card" key={section.id}>
+          <div className="section-heading">
+            <h2>{section.title}</h2>
+            <BookOpenText size={18} aria-hidden="true" />
+          </div>
+          <p>{section.description}</p>
+          <ul>
+            {section.items.map((item) => (
+              <li key={item}>{item}</li>
+            ))}
+          </ul>
+        </article>
+      ))}
+    </section>
+  );
+}
+
+function ReviewsView({ reviews }: { reviews: ReviewRecord[] }) {
+  return (
+    <section className="panel table-panel">
+      <div className="section-heading">
+        <h2>发布数据复盘</h2>
+        <span>播放、互动、转化和复盘结论</span>
+      </div>
+      <div className="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>关联选题</th>
+              <th>日期</th>
+              <th>平台</th>
+              <th>播放</th>
+              <th>点赞</th>
+              <th>收藏</th>
+              <th>评论</th>
+              <th>转化</th>
+              <th>复盘结论</th>
+            </tr>
+          </thead>
+          <tbody>
+            {reviews.map((record) => (
+              <tr key={record.id}>
+                <td>{record.topicTitle}</td>
+                <td>{record.publishDate}</td>
+                <td>{record.platform}</td>
+                <td>{formatNumber(record.views)}</td>
+                <td>{formatNumber(record.likes)}</td>
+                <td>{formatNumber(record.saves)}</td>
+                <td>{formatNumber(record.comments)}</td>
+                <td>{formatNumber(record.conversions)}</td>
+                <td>{record.conclusion}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
+function Metric({ label, value, detail }: { label: string; value: string; detail: string }) {
+  return (
+    <div className="metric-card">
+      <span>{label}</span>
+      <strong>{value}</strong>
+      <small>{detail}</small>
+    </div>
+  );
+}
+
+function DecisionCard({
+  actionLabel,
+  badge,
+  body,
+  isActionLoading,
+  meta,
+  onAction,
+  priority,
+  title,
+}: {
+  actionLabel?: string;
+  badge: string;
+  body: string;
+  isActionLoading?: boolean;
+  meta: string;
+  onAction?: () => void;
+  priority: "高" | "中" | "低";
+  title: string;
+}) {
+  return (
+    <article className="decision-card">
+      <div className="decision-card-top">
+        <span>{badge}</span>
+        <b className={`priority-pill priority-${priority}`}>{priority}优先级</b>
+      </div>
+      <h3>{title}</h3>
+      <p>{body}</p>
+      <small>{meta}</small>
+      {onAction ? (
+        <button className="inline-ai-button" disabled={isActionLoading} onClick={onAction} type="button">
+          {isActionLoading ? <Loader2 className="spin-icon" size={14} aria-hidden="true" /> : null}
+          <span>{actionLabel ?? "AI 研判"}</span>
+        </button>
+      ) : null}
+    </article>
+  );
+}
+
+function Detail({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <dt>{label}</dt>
+      <dd>{value}</dd>
+    </div>
+  );
+}
+
+function ProgressRow({ label, value, max }: { label: string; value: number; max: number }) {
+  const percent = Math.min(100, Math.round((value / max) * 100));
+  return (
+    <div className="progress-row">
+      <div>
+        <span>{label}</span>
+        <strong>{value}</strong>
+      </div>
+      <div className="progress-track" aria-hidden="true">
+        <span style={{ width: `${percent}%` }} />
+      </div>
+    </div>
+  );
+}
+
+export default App;

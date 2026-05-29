@@ -1,0 +1,1191 @@
+{
+  "positioning": {
+    "name": "火锅食材供应链服务型账号",
+    "audience": "火锅店老板、餐饮采购负责人、后厨负责人、新开店老板和连锁品牌采购团队",
+    "promise": "帮助门店选食材、控成本、做爆品、提升出餐效率和复购能力",
+    "style": "专业、直接、重经营场景，少空泛种草，多给判断和方法",
+    "platforms": [
+      "抖音",
+      "视频号",
+      "小红书",
+      "公众号"
+    ],
+    "conversionGoal": "建立供应链专业信任，沉淀采购线索和产品咨询"
+  },
+  "columns": [
+    "火锅食材选品指南",
+    "火锅店爆品打造",
+    "火锅店成本控制",
+    "节日节气备货建议",
+    "餐饮老板避坑指南",
+    "食材供应链知识"
+  ],
+  "topics": [
+    {
+      "id": "topic-001",
+      "title": "火锅店老板选毛肚，最容易踩的3个坑",
+      "column": "火锅食材选品指南",
+      "contentType": "避坑",
+      "targetUser": "火锅店老板",
+      "painPoint": "不知道如何判断毛肚品质，容易只看价格采购",
+      "businessLink": "毛肚产品标准、稳定供货、分级采购建议",
+      "hotSource": "常规经营痛点",
+      "angle": "从门店复购和出品稳定性切入",
+      "coreView": "毛肚不是越便宜越划算，稳定口感和损耗才决定综合成本",
+      "platform": "抖音/视频号",
+      "format": "口播+产品近景",
+      "scriptStatus": "已写",
+      "publishData": {
+        "views": 12800,
+        "likes": 326,
+        "saves": 91,
+        "comments": 38,
+        "conversions": 7
+      },
+      "review": "用户对判断标准感兴趣，可扩展成毛肚分级系列",
+      "topicCategory": "系列化选题"
+    },
+    {
+      "id": "topic-002",
+      "title": "为什么很多火锅店菜单越做越厚，利润却越来越低",
+      "column": "火锅店成本控制",
+      "contentType": "经营",
+      "targetUser": "火锅店老板",
+      "painPoint": "菜单复杂导致备货、损耗和后厨压力上升",
+      "businessLink": "菜品结构诊断、组合套餐建议",
+      "hotSource": "餐饮寒冬",
+      "angle": "用菜单厚度解释隐形成本",
+      "coreView": "菜单不是越丰富越好，能被稳定复购的结构才赚钱",
+      "platform": "抖音/公众号",
+      "format": "口播/长图文",
+      "scriptStatus": "未写",
+      "publishData": {
+        "views": 0,
+        "likes": 0,
+        "saves": 0,
+        "comments": 0,
+        "conversions": 0
+      },
+      "review": "待补充真实门店菜单案例",
+      "topicCategory": "行业热点选题"
+    },
+    {
+      "id": "topic-003",
+      "title": "餐饮寒冬下，火锅店应该保留哪些高复购食材",
+      "column": "火锅店成本控制",
+      "contentType": "热点",
+      "targetUser": "火锅店老板",
+      "painPoint": "客流下滑时不知道先砍哪些菜、保哪些菜",
+      "businessLink": "高复购食材清单、门店备货建议",
+      "hotSource": "行业趋势",
+      "angle": "从缩菜单和保复购切入",
+      "coreView": "越是客流压力大，越要保留复购稳定、出餐稳定的基础食材",
+      "platform": "视频号/公众号",
+      "format": "清单型图文",
+      "scriptStatus": "已写",
+      "publishData": {
+        "views": 8600,
+        "likes": 208,
+        "saves": 75,
+        "comments": 19,
+        "conversions": 4
+      },
+      "review": "收藏率较高，适合做成下载清单",
+      "topicCategory": "产品种草选题"
+    },
+    {
+      "id": "topic-004",
+      "title": "火锅店想做爆品，不是换个名字就行",
+      "column": "火锅店爆品打造",
+      "contentType": "观点",
+      "targetUser": "新开店老板",
+      "painPoint": "把爆品理解成营销话术，忽略产品结构",
+      "businessLink": "爆品食材组合、标准化出餐方案",
+      "hotSource": "常规经营痛点",
+      "angle": "拆解爆品的感知价值、毛利和出餐稳定",
+      "coreView": "爆品必须同时满足好记、好出、好复购、好算账",
+      "platform": "抖音/小红书",
+      "format": "口播+菜单截图",
+      "scriptStatus": "未写",
+      "publishData": {
+        "views": 0,
+        "likes": 0,
+        "saves": 0,
+        "comments": 0,
+        "conversions": 0
+      },
+      "review": "待设计爆品判断公式",
+      "topicCategory": "爆品打造选题"
+    },
+    {
+      "id": "topic-005",
+      "title": "冬天火锅店备货，最容易忽略的不是肉，而是小吃和甜品",
+      "column": "节日节气备货建议",
+      "contentType": "节气",
+      "targetUser": "后厨负责人",
+      "painPoint": "旺季备货只关注肉类，忽略提升客单价的辅助品类",
+      "businessLink": "小吃甜品、组合套餐、季节备货",
+      "hotSource": "冬季旺季",
+      "angle": "从客单价和翻台体验切入",
+      "coreView": "小吃甜品是旺季提升客单和体验的低风险补位",
+      "platform": "抖音/视频号",
+      "format": "清单型口播",
+      "scriptStatus": "已拍",
+      "publishData": {
+        "views": 6400,
+        "likes": 141,
+        "saves": 52,
+        "comments": 16,
+        "conversions": 2
+      },
+      "review": "可结合春节备货继续做",
+      "topicCategory": "系列化选题"
+    },
+    {
+      "id": "topic-006",
+      "title": "为什么火锅店一定要重视食材标准化",
+      "column": "食材供应链知识",
+      "contentType": "科普",
+      "targetUser": "连锁品牌",
+      "painPoint": "多店出品不稳定，培训和损耗难控制",
+      "businessLink": "标准化规格、统一供应、中央厨房配合",
+      "hotSource": "连锁扩张",
+      "angle": "从复制门店和控制损耗切入",
+      "coreView": "标准化不是限制创新，而是让好产品稳定出现",
+      "platform": "公众号/视频号",
+      "format": "知识科普",
+      "scriptStatus": "未写",
+      "publishData": {
+        "views": 0,
+        "likes": 0,
+        "saves": 0,
+        "comments": 0,
+        "conversions": 0
+      },
+      "review": "需要补规格图",
+      "topicCategory": "产品种草选题"
+    },
+    {
+      "id": "topic-007",
+      "title": "新开火锅店第一张菜单应该怎么配",
+      "column": "火锅食材选品指南",
+      "contentType": "清单",
+      "targetUser": "新开店老板",
+      "painPoint": "不知道基础品类比例，容易盲目堆新品",
+      "businessLink": "新店基础食材包、菜单设计咨询",
+      "hotSource": "开店刚需",
+      "angle": "按引流、利润、复购和补充品类拆菜单",
+      "coreView": "第一张菜单先求结构合理，再追求特色记忆点",
+      "platform": "小红书/公众号",
+      "format": "清单图文",
+      "scriptStatus": "已写",
+      "publishData": {
+        "views": 5200,
+        "likes": 116,
+        "saves": 84,
+        "comments": 22,
+        "conversions": 3
+      },
+      "review": "适合做可下载模板",
+      "topicCategory": "产品种草选题"
+    },
+    {
+      "id": "topic-008",
+      "title": "火锅店做套餐，不能只想着便宜",
+      "column": "火锅店爆品打造",
+      "contentType": "经营",
+      "targetUser": "火锅店老板",
+      "painPoint": "套餐只降价，牺牲毛利还无法提升复购",
+      "businessLink": "套餐食材组合、毛利结构建议",
+      "hotSource": "促销季",
+      "angle": "从套餐的感知价值和利润结构切入",
+      "coreView": "好套餐不是便宜，而是让顾客觉得划算、老板还能赚钱",
+      "platform": "抖音/视频号",
+      "format": "案例拆解",
+      "scriptStatus": "未写",
+      "publishData": {
+        "views": 0,
+        "likes": 0,
+        "saves": 0,
+        "comments": 0,
+        "conversions": 0
+      },
+      "review": "待补套餐案例",
+      "topicCategory": "爆品打造选题"
+    },
+    {
+      "id": "topic-009",
+      "title": "鸭肠、毛肚、黄喉，谁更适合做门店招牌",
+      "column": "火锅店爆品打造",
+      "contentType": "产品",
+      "targetUser": "火锅店老板",
+      "painPoint": "不知道招牌菜该按流量、利润还是出餐效率选择",
+      "businessLink": "核心食材组合和招牌菜打造",
+      "hotSource": "产品对比",
+      "angle": "按记忆点、稳定性、损耗和毛利对比",
+      "coreView": "招牌菜选择要看门店模型，不是看哪个食材更热门",
+      "platform": "抖音/小红书",
+      "format": "对比型口播",
+      "scriptStatus": "已发",
+      "publishData": {
+        "views": 18400,
+        "likes": 512,
+        "saves": 138,
+        "comments": 61,
+        "conversions": 11
+      },
+      "review": "评论区采购咨询多，继续做单品对比",
+      "topicCategory": "系列化选题"
+    },
+    {
+      "id": "topic-010",
+      "title": "小火锅店如何用有限预算做出丰富菜单",
+      "column": "火锅店成本控制",
+      "contentType": "痛点",
+      "targetUser": "小火锅店老板",
+      "painPoint": "预算有限但希望菜单看起来丰富",
+      "businessLink": "基础食材组合、低损耗补充品类",
+      "hotSource": "小店经营",
+      "angle": "用组合和复用解决丰富度",
+      "coreView": "小店菜单要靠结构和组合显得丰富，而不是靠库存堆出来",
+      "platform": "视频号/小红书",
+      "format": "清单型图文",
+      "scriptStatus": "未写",
+      "publishData": {
+        "views": 0,
+        "likes": 0,
+        "saves": 0,
+        "comments": 0,
+        "conversions": 0
+      },
+      "review": "待补预算区间",
+      "topicCategory": "用户痛点选题"
+    },
+    {
+      "id": "topic-011",
+      "title": "火锅食材供应不稳定，会怎样影响门店复购",
+      "column": "食材供应链知识",
+      "contentType": "供应链",
+      "targetUser": "采购商",
+      "painPoint": "只关注单次采购价格，忽视稳定供应",
+      "businessLink": "稳定供应、规格管理、长期采购合作",
+      "hotSource": "供应链波动",
+      "angle": "从顾客体验和复购损失切入",
+      "coreView": "供应不稳定最终会变成顾客对门店的不信任",
+      "platform": "公众号/视频号",
+      "format": "经营判断",
+      "scriptStatus": "已写",
+      "publishData": {
+        "views": 4100,
+        "likes": 88,
+        "saves": 24,
+        "comments": 11,
+        "conversions": 5
+      },
+      "review": "转化不错，可补采购 checklist",
+      "topicCategory": "用户痛点选题"
+    },
+    {
+      "id": "topic-012",
+      "title": "火锅店如何用高毛利小吃提升客单价",
+      "column": "火锅店爆品打造",
+      "contentType": "产品",
+      "targetUser": "火锅店老板",
+      "painPoint": "主菜竞争激烈，客单价提升困难",
+      "businessLink": "小吃甜品类产品、套餐搭配",
+      "hotSource": "利润提升",
+      "angle": "从加购场景和出餐效率切入",
+      "coreView": "高毛利小吃要放在顾客最容易顺手加购的位置",
+      "platform": "抖音/小红书",
+      "format": "爆品推荐",
+      "scriptStatus": "未写",
+      "publishData": {
+        "views": 0,
+        "likes": 0,
+        "saves": 0,
+        "comments": 0,
+        "conversions": 0
+      },
+      "review": "待补产品图",
+      "topicCategory": "爆品打造选题"
+    },
+    {
+      "id": "topic-013",
+      "title": "为什么有些菜品看起来便宜，实际损耗很高",
+      "column": "餐饮老板避坑指南",
+      "contentType": "避坑",
+      "targetUser": "后厨负责人",
+      "painPoint": "采购单价低但储存、加工和损耗成本高",
+      "businessLink": "低损耗食材、标准包装、备货方法",
+      "hotSource": "成本控制",
+      "angle": "把隐形损耗讲清楚",
+      "coreView": "老板要算的是综合成本，不是采购小票上的单价",
+      "platform": "视频号/公众号",
+      "format": "案例拆解",
+      "scriptStatus": "已写",
+      "publishData": {
+        "views": 7300,
+        "likes": 163,
+        "saves": 69,
+        "comments": 25,
+        "conversions": 4
+      },
+      "review": "后厨负责人反馈多，可做损耗计算表",
+      "topicCategory": "用户痛点选题"
+    },
+    {
+      "id": "topic-014",
+      "title": "节假日前，火锅店老板应该提前准备哪些食材",
+      "column": "节日节气备货建议",
+      "contentType": "节日",
+      "targetUser": "火锅店老板",
+      "painPoint": "节前备货没有清单，容易缺货或积压",
+      "businessLink": "节日备货清单、套餐组合",
+      "hotSource": "春节/中秋/国庆",
+      "angle": "按必备、增值、应急三类准备",
+      "coreView": "节前备货不是越多越安全，而是结构要覆盖高峰场景",
+      "platform": "小红书/视频号",
+      "format": "清单型图文",
+      "scriptStatus": "未写",
+      "publishData": {
+        "views": 0,
+        "likes": 0,
+        "saves": 0,
+        "comments": 0,
+        "conversions": 0
+      },
+      "review": "可按节日拆分",
+      "topicCategory": "节气节日选题"
+    },
+    {
+      "id": "topic-015",
+      "title": "火锅店菜单设计，哪些菜适合引流，哪些菜适合赚钱",
+      "column": "火锅店成本控制",
+      "contentType": "经营",
+      "targetUser": "火锅店老板",
+      "painPoint": "菜单缺少角色分工，所有菜都想赚钱",
+      "businessLink": "菜单结构、毛利搭配、引流单品",
+      "hotSource": "菜单优化",
+      "angle": "按引流菜、利润菜、复购菜拆解",
+      "coreView": "菜单里的每道菜都应该有角色，不是每道菜都承担同一个目标",
+      "platform": "公众号/抖音",
+      "format": "结构拆解",
+      "scriptStatus": "已拍",
+      "publishData": {
+        "views": 9900,
+        "likes": 241,
+        "saves": 112,
+        "comments": 33,
+        "conversions": 6
+      },
+      "review": "适合做系列第一集",
+      "topicCategory": "系列化选题"
+    },
+    {
+      "id": "topic-016",
+      "title": "一家火锅店有没有竞争力，看它的食材结构就知道",
+      "column": "食材供应链知识",
+      "contentType": "观点",
+      "targetUser": "采购商",
+      "painPoint": "看不出门店竞争力和食材结构之间的关系",
+      "businessLink": "食材结构诊断、供应链能力",
+      "hotSource": "行业判断",
+      "angle": "从结构而非单品看门店",
+      "coreView": "真正有竞争力的火锅店，食材结构通常很克制、清晰、稳定",
+      "platform": "视频号/公众号",
+      "format": "经营判断",
+      "scriptStatus": "未写",
+      "publishData": {
+        "views": 0,
+        "likes": 0,
+        "saves": 0,
+        "comments": 0,
+        "conversions": 0
+      },
+      "review": "待补结构图",
+      "topicCategory": "产品种草选题"
+    },
+    {
+      "id": "topic-017",
+      "title": "火锅店不要盲目追新品，先看后厨能不能标准化",
+      "column": "餐饮老板避坑指南",
+      "contentType": "避坑",
+      "targetUser": "后厨负责人",
+      "painPoint": "新品增加出餐复杂度和培训成本",
+      "businessLink": "标准化新品、后厨操作流程",
+      "hotSource": "新品季",
+      "angle": "从后厨执行能力判断新品价值",
+      "coreView": "不能被稳定做出来的新品，很难成为真正的爆品",
+      "platform": "抖音/视频号",
+      "format": "口播",
+      "scriptStatus": "已写",
+      "publishData": {
+        "views": 6800,
+        "likes": 179,
+        "saves": 57,
+        "comments": 21,
+        "conversions": 3
+      },
+      "review": "适合关联标准化产品",
+      "topicCategory": "用户痛点选题"
+    },
+    {
+      "id": "topic-018",
+      "title": "餐饮老板采购食材，不能只看单价",
+      "column": "餐饮老板避坑指南",
+      "contentType": "采购",
+      "targetUser": "采购商",
+      "painPoint": "采购决策过度依赖报价，忽视损耗和稳定性",
+      "businessLink": "供应商选择、规格标准、长期采购",
+      "hotSource": "采购避坑",
+      "angle": "用总成本解释采购判断",
+      "coreView": "低价采购如果带来高损耗和不稳定，最后会更贵",
+      "platform": "公众号/视频号",
+      "format": "避坑清单",
+      "scriptStatus": "已发",
+      "publishData": {
+        "views": 15200,
+        "likes": 402,
+        "saves": 126,
+        "comments": 47,
+        "conversions": 10
+      },
+      "review": "转化强，可做采购避坑系列",
+      "topicCategory": "系列化选题"
+    },
+    {
+      "id": "topic-019",
+      "title": "火锅店如何设计一套适合外卖的食材组合",
+      "column": "火锅店爆品打造",
+      "contentType": "案例",
+      "targetUser": "火锅店老板",
+      "painPoint": "堂食食材组合直接搬到外卖，体验和毛利都不稳定",
+      "businessLink": "外卖套餐、耐配送食材、组合包",
+      "hotSource": "外卖增长",
+      "angle": "按耐配送、易标准化、易组合拆解",
+      "coreView": "外卖火锅组合要先考虑配送后的体验，再考虑菜单完整度",
+      "platform": "小红书/抖音",
+      "format": "案例拆解",
+      "scriptStatus": "未写",
+      "publishData": {
+        "views": 0,
+        "likes": 0,
+        "saves": 0,
+        "comments": 0,
+        "conversions": 0
+      },
+      "review": "待补外卖产品包",
+      "topicCategory": "爆品打造选题"
+    },
+    {
+      "id": "topic-020",
+      "title": "为什么现在火锅店更需要供应链思维",
+      "column": "食材供应链知识",
+      "contentType": "观点",
+      "targetUser": "连锁品牌",
+      "painPoint": "只把供应链当进货渠道，没有用于经营优化",
+      "businessLink": "供应链服务、选品和菜单协同",
+      "hotSource": "行业趋势",
+      "angle": "从成本、稳定、复购和扩张解释供应链价值",
+      "coreView": "供应链思维不是买得更便宜，而是让门店持续稳定地赚钱",
+      "platform": "公众号/视频号",
+      "format": "长图文/口播",
+      "scriptStatus": "未写",
+      "publishData": {
+        "views": 0,
+        "likes": 0,
+        "saves": 0,
+        "comments": 0,
+        "conversions": 0
+      },
+      "review": "适合做账号置顶内容",
+      "topicCategory": "产品种草选题"
+    },
+    {
+      "id": "topic-021",
+      "title": "端午小长假备货，火锅店老板如何用高毛利食材设计节日引流套餐",
+      "column": "火锅食材选品指南",
+      "topicCategory": "产品种草选题",
+      "contentType": "种草",
+      "targetUser": "火锅店老板",
+      "painPoint": "节日备货盲目加量，但套餐毛利低，客流转化差",
+      "businessLink": "我们的丸滑类、小吃甜品类产品正是节日套餐的最佳搭配，毛利可达60%以上",
+      "hotSource": "端午前后聚餐和小长假备货（内部热点）",
+      "angle": "重点推荐几款高感知、高出餐效率的食材，组合成节日套餐，提升毛利",
+      "coreView": "节日备货不是简单的加库存，而是用组合拳拉高客单价，核心是选对高毛利产品",
+      "platform": "抖音/小红书",
+      "format": "短视频+实操清单",
+      "scriptStatus": "未写",
+      "publishData": {
+        "views": 0,
+        "likes": 0,
+        "saves": 0,
+        "comments": 0,
+        "conversions": 0
+      },
+      "review": "AI 联网生成，已人工确认入池，待脚本和素材补充",
+      "sourceUrls": [],
+      "recommendationScore": 55,
+      "aiGenerated": true,
+      "riskNotes": [
+        "无外部来源，分数受限；需避免与其他平台节日备货内容雷同"
+      ]
+    },
+    {
+      "id": "topic-022",
+      "title": "餐饮会销案例拆解：火锅食材供应商如何帮门店设计高复购爆品组合",
+      "column": "火锅食材选品指南",
+      "topicCategory": "产品种草选题",
+      "contentType": "种草",
+      "targetUser": "火锅店老板、新开店老板",
+      "painPoint": "不会用食材组合提升客单价，新品推广成功率低",
+      "businessLink": "我们提供爆品组合方案和门店培训，让新品真正成为利润点",
+      "hotSource": "招商哥分享餐饮会销低成本逆袭案例",
+      "angle": "借鉴会销中产品组合与信任构建的方法，指导火锅食材的套餐化设计和门店落地",
+      "coreView": "供应商不能只卖单品，要输出“食材+营销方案”的组合，帮门店提高新品成活率",
+      "platform": "公众号/视频号",
+      "format": "图文案例+数据复盘",
+      "scriptStatus": "未写",
+      "publishData": {
+        "views": 0,
+        "likes": 0,
+        "saves": 0,
+        "comments": 0,
+        "conversions": 0
+      },
+      "review": "AI 联网生成，已人工确认入池，待脚本和素材补充",
+      "sourceUrls": [
+        "https://www.instagram.com/p/DXwG663Ez4t"
+      ],
+      "recommendationScore": 65,
+      "aiGenerated": true,
+      "riskNotes": [
+        "Instagram来源可能无法直接访问，但案例逻辑可引用；避免过度承诺推广效果"
+      ]
+    },
+    {
+      "id": "topic-023",
+      "title": "京东生鲜“超级供应链”逻辑，对火锅食材采购的启示：稳定比低价更重要",
+      "column": "火锅食材选品指南",
+      "topicCategory": "产品种草选题",
+      "contentType": "种草",
+      "targetUser": "餐饮采购负责人、连锁品牌采购团队",
+      "painPoint": "食材供应不稳定导致出品波动，影响复购",
+      "businessLink": "我们的标准化分级、全年稳定供应体系，正是火锅连锁扩张的关键支撑",
+      "hotSource": "京东生鲜用超级供应链与共建标准驱动产业长效升级",
+      "angle": "从零售生鲜的标准化思路，引申到火锅食材供应的稳定性和综合成本控制",
+      "coreView": "只看采购单价是最大的陷阱，稳定的交付、一致的品质才是长期利润的保障",
+      "platform": "视频号/抖音",
+      "format": "短视频+数据图表",
+      "scriptStatus": "未写",
+      "publishData": {
+        "views": 0,
+        "likes": 0,
+        "saves": 0,
+        "comments": 0,
+        "conversions": 0
+      },
+      "review": "AI 联网生成，已人工确认入池，待脚本和素材补充",
+      "sourceUrls": [],
+      "recommendationScore": 60,
+      "aiGenerated": true,
+      "riskNotes": [
+        "需避免直接对比京东，以防侵权"
+      ]
+    },
+    {
+      "id": "topic-024",
+      "title": "从夸父炸串×阿里农业合作，看火锅食材源头直采的降本逻辑",
+      "column": "火锅食材选品指南",
+      "topicCategory": "产品种草选题",
+      "contentType": "种草",
+      "targetUser": "火锅店老板、餐饮采购负责人",
+      "painPoint": "食材成本波动大，中间环节多，毛利被蚕食",
+      "businessLink": "我们提供的源头直采毛肚、牛肉等品类，帮门店拉高毛利10%以上",
+      "hotSource": "夸父炸串联手阿里农业，从源头重塑主食爆品",
+      "angle": "拆解头部品牌源头合作模式，映射到火锅食材供应链的可行路径",
+      "coreView": "源头直采不是大牌特权，中小火锅店通过专业供应链同样能实现成本可控、品质稳定",
+      "platform": "公众号/视频号",
+      "format": "图文+案例拆解",
+      "scriptStatus": "未写",
+      "publishData": {
+        "views": 0,
+        "likes": 0,
+        "saves": 0,
+        "comments": 0,
+        "conversions": 0
+      },
+      "review": "AI 联网生成，已人工确认入池，待脚本和素材补充",
+      "sourceUrls": [],
+      "recommendationScore": 60,
+      "aiGenerated": true,
+      "riskNotes": [
+        "避免夸大源头直采的规模要求，需强调供应链服务能力"
+      ]
+    },
+    {
+      "id": "topic-025",
+      "title": "盒马“粉木耳标签”下架事件：火锅食材采购必须重视的合规陷阱",
+      "column": "火锅食材选品指南",
+      "topicCategory": "产品种草选题",
+      "contentType": "种草",
+      "targetUser": "火锅店老板、后厨负责人",
+      "painPoint": "食材采购时不重视标签和质检，埋下食安隐患",
+      "businessLink": "我们所有食材均提供第三方检测报告和合规标签，帮门店守住底线",
+      "hotSource": "盒马就“粉木耳标签设计”道歉：全部下架！",
+      "angle": "从零售食安事件反推火锅门店的食材合规审核要点",
+      "coreView": "食材合规不是成本，是避免停业风险的保险，采购必须先看标准再看价格",
+      "platform": "抖音/小红书",
+      "format": "口播+实物演示",
+      "scriptStatus": "未写",
+      "publishData": {
+        "views": 0,
+        "likes": 0,
+        "saves": 0,
+        "comments": 0,
+        "conversions": 0
+      },
+      "review": "AI 联网生成，已人工确认入池，待脚本和素材补充",
+      "sourceUrls": [],
+      "recommendationScore": 60,
+      "aiGenerated": true,
+      "riskNotes": [
+        "避免直接批评盒马，聚焦B端采购自查"
+      ]
+    },
+    {
+      "id": "topic-026",
+      "title": "折扣零售走强，火锅店如何用“高感知爆品”应对消费理性化？",
+      "column": "火锅店爆品打造",
+      "topicCategory": "行业热点选题",
+      "contentType": "热点",
+      "targetUser": "火锅店老板",
+      "painPoint": "顾客越来越看重性价比，常规菜品难以撑住客单价和利润",
+      "businessLink": "结合本账号的高毛利、高感知食材组合，给出“一个镇店爆品+两个引流搭配”的菜单调整建议。",
+      "hotSource": "折扣零售的韧性（蓝鲨消费，5月25日）",
+      "angle": "借折扣零售代表TJX业绩逆势增长的现象，提出消费越理性，顾客越愿意为“值”而非“便宜”买单的观点，引导火锅店通过打造品质感知强、价值感清晰的爆品（如厚切牛舌、手打虾滑等）来稳定客单价和复购。",
+      "coreView": "老板要算综合成本，不要只看采购单价。顾客不是图便宜，是要觉得这钱花得值，爆品就是让他们觉得值的那道菜。",
+      "platform": "公众号 / 小红书",
+      "format": "数据解读 + 案例建议图文",
+      "scriptStatus": "未写",
+      "publishData": {
+        "views": 0,
+        "likes": 0,
+        "saves": 0,
+        "comments": 0,
+        "conversions": 0
+      },
+      "review": "AI 联网生成，已人工确认入池，待脚本和素材补充",
+      "sourceUrls": [
+        "https://www.lanshaxiaofei.com/flashs"
+      ],
+      "recommendationScore": 80,
+      "aiGenerated": true,
+      "riskNotes": [
+        "避免直接引用TJX的海外数据做国内对标；观点需基于国内消费趋势的普遍观察，不可编造国内折扣餐饮数据"
+      ]
+    },
+    {
+      "id": "topic-027",
+      "title": "永辉熟食供应链大会背后：火锅食材爆品研发的工业化与标准化新趋势",
+      "column": "火锅店爆品打造",
+      "topicCategory": "行业热点选题",
+      "contentType": "热点",
+      "targetUser": "火锅店老板",
+      "painPoint": "后厨操作依赖厨师手感，爆品出餐效率低、品控难统一",
+      "businessLink": "关联本账号提供的丸滑类、腌制肉类等标准化食材，通过数据对比展示使用前后的人力和时间节省。",
+      "hotSource": "永辉超市2026年熟食供应商大会举办（蓝鲨消费，5月27日）",
+      "angle": "从零售企业强化熟食品类标准化供应链的现象出发，分析火锅食材工业化带来的半成品、预调理食材趋势，并解释这类产品如何帮助门店简化后厨操作、提升爆品出餐稳定性和翻台率。",
+      "coreView": "不能被后厨稳定做出来的新品，很难成为爆品。工业化标准食材不是让火锅店失去烟火气，而是让爆品能被更高效地复制。",
+      "platform": "抖音 / 视频号",
+      "format": "短视频案例拆解",
+      "scriptStatus": "未写",
+      "publishData": {
+        "views": 0,
+        "likes": 0,
+        "saves": 0,
+        "comments": 0,
+        "conversions": 0
+      },
+      "review": "AI 联网生成，已人工确认入池，待脚本和素材补充",
+      "sourceUrls": [
+        "https://www.lanshaxiaofei.com/flashs"
+      ],
+      "recommendationScore": 75,
+      "aiGenerated": true,
+      "riskNotes": [
+        "不可对永辉供应链做夸大解读；强调标准化食材是补充而非替代全部现制，避免引发“去厨师化”争议"
+      ]
+    },
+    {
+      "id": "topic-028",
+      "title": "京东生鲜推“超级供应链”，给火锅食材采购带来哪些爆品新思路？",
+      "column": "火锅店爆品打造",
+      "topicCategory": "行业热点选题",
+      "contentType": "热点",
+      "targetUser": "火锅店老板",
+      "painPoint": "食材供应不稳定，爆品经常断货或品质波动导致差评",
+      "businessLink": "通过介绍供应链标准化对冻品、肉品等火锅核心食材品质一致性的保障，引导门店关注供应商的仓储、物流和品控能力，而不仅仅是价格。",
+      "hotSource": "京东生鲜用超级供应链与共建标准驱动产业升级（蓝鲨消费，5月26日）",
+      "angle": "从京东生鲜强调的“稳定供应”和“标准共建”切入，引申到火锅门店如何选择具备供应链深度的食材供应商，保证爆品长期稳定供应，降低经营风险。",
+      "coreView": "火锅店做爆品，最怕不是卖不出去，而是卖起来之后供不上、品质变样。供应链思维是爆品能持续下去的关键。",
+      "platform": "公众号 / 小红书",
+      "format": "深度图文",
+      "scriptStatus": "未写",
+      "publishData": {
+        "views": 0,
+        "likes": 0,
+        "saves": 0,
+        "comments": 0,
+        "conversions": 0
+      },
+      "review": "AI 联网生成，已人工确认入池，待脚本和素材补充",
+      "sourceUrls": [
+        "https://www.lanshaxiaofei.com/flashs"
+      ],
+      "recommendationScore": 80,
+      "aiGenerated": true,
+      "riskNotes": [
+        "不可直接关联或暗示本账号与京东有合作；避免对京东生鲜的具体运营数据做主观评价"
+      ]
+    },
+    {
+      "id": "topic-029",
+      "title": "夸父炸串×阿里农业，对火锅店源头直采做爆品有何启发？",
+      "column": "火锅店爆品打造",
+      "topicCategory": "行业热点选题",
+      "contentType": "热点",
+      "targetUser": "火锅店老板",
+      "painPoint": "同质化竞争激烈，爆品难以建立长期壁垒",
+      "businessLink": "火锅门店可将毛肚、牛肉等高感知食材与源头工厂合作直采，围绕供应链优势设计招牌爆品，既能控本又能保证出品稳定。",
+      "hotSource": "夸父炸串联手阿里农业从源头重塑主食爆品（蓝鲨消费，5月28日）",
+      "angle": "拆解餐饮品牌如何通过源头直采锁定原料品质与成本，结合供应链能力打造具有差异化且可持续的爆品，并给火锅门店可落地的选品与供应链合作建议。",
+      "coreView": "爆品不是换个名字，而是要从原料端就开始建立稳定、有差异的供应链能力，源头直采能帮火锅店在利润和复购上建立长期优势。",
+      "platform": "抖音 / 视频号",
+      "format": "短视频 + 图文拆解",
+      "scriptStatus": "未写",
+      "publishData": {
+        "views": 0,
+        "likes": 0,
+        "saves": 0,
+        "comments": 0,
+        "conversions": 0
+      },
+      "review": "AI 联网生成，已人工确认入池，待脚本和素材补充",
+      "sourceUrls": [
+        "https://www.lanshaxiaofei.com/flashs"
+      ],
+      "recommendationScore": 85,
+      "aiGenerated": true,
+      "riskNotes": [
+        "避免直接评价夸父炸串经营数据，仅作为模式参考；不可承诺具体的直采价格优势"
+      ]
+    },
+    {
+      "id": "topic-030",
+      "title": "盒马“粉木耳标签”下架：火锅店做食材爆品必须绕开的合规坑",
+      "column": "火锅店爆品打造",
+      "topicCategory": "行业热点选题",
+      "contentType": "热点",
+      "targetUser": "火锅店老板",
+      "painPoint": "使用包装食材时容易忽略标签合规，爆品可能因标识问题被投诉或处罚",
+      "businessLink": "关联本账号可提供的资质齐全、标签规范的供应链产品，并教门店如何快速检查关键项，形成一份《火锅食材标签查验清单》。",
+      "hotSource": "盒马就“粉木耳标签设计”道歉并全部下架（蓝鲨消费，5月27日）",
+      "angle": "以盒马因标签不规范下架商品为引，提醒火锅门店在采购预包装食材、定制底料或蘸料时，必须审核产品标签、配料表、保质期等信息，避免爆品刚推就因合规问题暴雷。",
+      "coreView": "爆品不仅要好吃，还要合法。食材标签上的产地、生产日期、贮存条件等任何一个细节出问题，都可能让爆品变成麻烦。",
+      "platform": "小红书 / 抖音",
+      "format": "清单体图文 / 口播视频",
+      "scriptStatus": "未写",
+      "publishData": {
+        "views": 0,
+        "likes": 0,
+        "saves": 0,
+        "comments": 0,
+        "conversions": 0
+      },
+      "review": "AI 联网生成，已人工确认入池，待脚本和素材补充",
+      "sourceUrls": [
+        "https://www.lanshaxiaofei.com/flashs"
+      ],
+      "recommendationScore": 85,
+      "aiGenerated": true,
+      "riskNotes": [
+        "避免直接批评盒马或推测其内部流程；内容聚焦通用合规知识，不针对特定品牌"
+      ]
+    }
+  ],
+  "scriptTemplates": [
+    {
+      "id": "script-001",
+      "name": "痛点型脚本",
+      "scenario": "用户有明确经营痛点，需要给判断和解决路径",
+      "steps": [
+        "一句话点破痛点",
+        "解释痛点背后的隐形成本",
+        "给出3个判断标准",
+        "关联产品或供应链能力",
+        "引导评论区说出门店情况"
+      ],
+      "opener": "很多火锅店老板以为问题出在客流，其实先出问题的是菜品结构。",
+      "platforms": [
+        "抖音",
+        "视频号"
+      ]
+    },
+    {
+      "id": "script-002",
+      "name": "清单型脚本",
+      "scenario": "节日备货、新店菜单、基础品类推荐",
+      "steps": [
+        "说明适用场景",
+        "按优先级列出清单",
+        "解释每一类的门店价值",
+        "提醒容易遗漏的细节",
+        "提供可私信领取的清单方向"
+      ],
+      "opener": "如果你是新开火锅店，第一张菜单先别急着追新品，先把这几类配齐。",
+      "platforms": [
+        "小红书",
+        "公众号",
+        "视频号"
+      ]
+    },
+    {
+      "id": "script-003",
+      "name": "避坑型脚本",
+      "scenario": "采购、选品、套餐、损耗等常见误区",
+      "steps": [
+        "抛出常见错误做法",
+        "说明为什么看似合理",
+        "拆掉误区",
+        "给替代做法",
+        "总结一句可记住的判断句"
+      ],
+      "opener": "采购食材最怕的不是买贵了，而是以为自己买便宜了。",
+      "platforms": [
+        "抖音",
+        "视频号"
+      ]
+    },
+    {
+      "id": "script-004",
+      "name": "案例型脚本",
+      "scenario": "拆解门店、爆品、套餐或失败案例",
+      "steps": [
+        "给出案例背景",
+        "指出关键动作",
+        "拆解背后的经营逻辑",
+        "提炼可复制方法",
+        "提醒适用边界"
+      ],
+      "opener": "这家小火锅店没有增加太多新品，却把客单价提了上去，关键在这一步。",
+      "platforms": [
+        "公众号",
+        "视频号",
+        "小红书"
+      ]
+    },
+    {
+      "id": "script-005",
+      "name": "爆品推荐型脚本",
+      "scenario": "毛肚、鸭肠、小吃甜品、套餐组合等产品推荐",
+      "steps": [
+        "先讲门店场景",
+        "说明产品适合解决什么问题",
+        "拆解毛利、复购或出餐优势",
+        "给搭配建议",
+        "提醒不要盲目照搬"
+      ],
+      "opener": "一个食材能不能做爆品，不看名字响不响，看它能不能同时满足这4件事。",
+      "platforms": [
+        "抖音",
+        "小红书"
+      ]
+    },
+    {
+      "id": "script-006",
+      "name": "节日借势型脚本",
+      "scenario": "春节、冬至、中秋国庆、雨雪天气和季节变化",
+      "steps": [
+        "点出时间节点",
+        "说明门店会遇到的需求变化",
+        "给备货或套餐建议",
+        "提醒库存和损耗风险",
+        "引导提前准备"
+      ],
+      "opener": "冬至前后，火锅店备货不要只盯着肉类，有几类产品很容易被忽略。",
+      "platforms": [
+        "抖音",
+        "视频号",
+        "小红书"
+      ]
+    }
+  ],
+  "prompts": [
+    {
+      "id": "prompt-001",
+      "purpose": "批量生成选题",
+      "audience": "火锅店老板",
+      "body": "你是一个火锅食材B端自媒体选题策划，请围绕【火锅店老板】这个用户群体，结合【餐饮寒冬、成本控制、菜品创新、供应链稳定】这几个关键词，生成20个适合短视频账号发布的选题。要求：每个选题要有B端业务价值，不要写成普通消费者种草内容，选题要能延展成系列内容。",
+      "outputFields": [
+        "标题",
+        "目标用户",
+        "用户痛点",
+        "内容角度",
+        "产品关联",
+        "脚本方向"
+      ]
+    },
+    {
+      "id": "prompt-002",
+      "purpose": "扩展系列选题",
+      "audience": "内容运营",
+      "body": "请把选题【输入选题】扩展成一个5集短视频系列。每集都要有递进关系，围绕同一个B端经营问题展开，避免重复表达。",
+      "outputFields": [
+        "集数",
+        "标题",
+        "核心观点",
+        "脚本结构",
+        "适合平台"
+      ]
+    },
+    {
+      "id": "prompt-003",
+      "purpose": "生成口播脚本",
+      "audience": "短视频编导",
+      "body": "请根据选题【输入选题】生成一条60秒以内的火锅食材B端账号口播脚本。要求开头有钩子，中间讲清经营逻辑，结尾引导老板留言门店情况，语气专业直接，不要过度营销。",
+      "outputFields": [
+        "开头钩子",
+        "正文脚本",
+        "产品关联",
+        "评论区引导"
+      ]
+    },
+    {
+      "id": "prompt-004",
+      "purpose": "拆解爆款结构",
+      "audience": "账号运营",
+      "body": "请分析这条历史内容【粘贴内容或数据】，拆解它为什么表现好或不好，并给出下一条可延展选题。",
+      "outputFields": [
+        "表现判断",
+        "有效结构",
+        "问题点",
+        "可复用表达",
+        "下一条选题"
+      ]
+    }
+  ],
+  "materials": [
+    {
+      "id": "material-001",
+      "title": "目标用户痛点",
+      "description": "按火锅店经营角色沉淀常见问题",
+      "items": [
+        "火锅店老板：成本、利润、复购、菜单结构",
+        "采购商：稳定供应、品质判断、价格波动",
+        "后厨负责人：出餐效率、损耗、操作标准",
+        "新开店老板：不知道如何选品和设计第一张菜单",
+        "连锁品牌：标准化、统一供应、门店复制"
+      ]
+    },
+    {
+      "id": "material-002",
+      "title": "产品资料",
+      "description": "用于选题、脚本和销售转化的产品分类",
+      "items": [
+        "毛肚类",
+        "牛羊肉类",
+        "丸滑类",
+        "菌菇蔬菜类",
+        "小吃甜品类",
+        "锅底蘸料类",
+        "组合套餐类"
+      ]
+    },
+    {
+      "id": "material-003",
+      "title": "案例素材",
+      "description": "用于案例拆解和经营判断内容",
+      "items": [
+        "门店案例",
+        "爆品案例",
+        "节日营销案例",
+        "食材组合案例",
+        "失败案例/避坑案例"
+      ]
+    },
+    {
+      "id": "material-004",
+      "title": "金句表达",
+      "description": "标题、开头、转化和评论区可复用表达",
+      "items": [
+        "采购食材最怕的不是买贵了，而是以为自己买便宜了",
+        "菜单不是越厚越有竞争力，结构清楚才有利润",
+        "不能被后厨稳定做出来的新品，很难成为爆品",
+        "供应链思维不是买得更便宜，而是让门店持续稳定地赚钱",
+        "老板要算综合成本，不要只看采购单价"
+      ]
+    }
+  ],
+  "hotspots": [
+    {
+      "id": "hotspot-001",
+      "title": "端午前后聚餐和小长假备货",
+      "type": "节日节点",
+      "window": "未来2周",
+      "matchedColumn": "节日节气备货建议",
+      "targetUser": "火锅店老板",
+      "recommendedAngle": "围绕小长假翻台、套餐备货、小吃甜品加购，做一条节前清单内容。",
+      "priority": "高"
+    },
+    {
+      "id": "hotspot-002",
+      "title": "夏季火锅淡季拉客",
+      "type": "季节经营",
+      "window": "本月持续",
+      "matchedColumn": "火锅店成本控制",
+      "targetUser": "小火锅店老板",
+      "recommendedAngle": "从低成本高感知食材、冰粉小吃、冷锅系列和外卖组合切入。",
+      "priority": "高"
+    },
+    {
+      "id": "hotspot-003",
+      "title": "餐饮门店缩菜单与降损耗",
+      "type": "行业趋势",
+      "window": "长期趋势",
+      "matchedColumn": "餐饮老板避坑指南",
+      "targetUser": "餐饮采购负责人",
+      "recommendedAngle": "用菜单结构和采购综合成本解释为什么不能只看单价。",
+      "priority": "中"
+    },
+    {
+      "id": "hotspot-004",
+      "title": "新店开业套餐和引流菜设计",
+      "type": "经营场景",
+      "window": "长期可做",
+      "matchedColumn": "火锅店爆品打造",
+      "targetUser": "新开店老板",
+      "recommendedAngle": "把第一张菜单、引流菜、利润菜和复购菜做成一套系列内容。",
+      "priority": "中"
+    }
+  ],
+  "iterationSuggestions": [
+    {
+      "id": "suggestion-001",
+      "type": "扩展系列",
+      "related": "鸭肠、毛肚、黄喉，谁更适合做门店招牌",
+      "action": "继续做单品对比系列，下一条对比牛肉卷、羊肉卷和虾滑。",
+      "reason": "该作品播放、评论、转化都高于平均值，说明老板愿意围绕招牌菜选择继续讨论。",
+      "output": "3条对比型选题 + 1个招牌菜判断模板"
+    },
+    {
+      "id": "suggestion-002",
+      "type": "沉淀模板",
+      "related": "火锅店菜单设计，哪些菜适合引流，哪些菜适合赚钱",
+      "action": "把内容沉淀为菜单角色分工模板，并补充引流菜、利润菜、复购菜示例。",
+      "reason": "收藏率较高，结构型内容适合变成可反复使用的清单和图文模板。",
+      "output": "菜单设计模板 + 小红书长图文"
+    },
+    {
+      "id": "suggestion-003",
+      "type": "补充资料",
+      "related": "餐饮老板采购食材，不能只看单价",
+      "action": "补充采购综合成本资料，包括损耗、规格、供货稳定性和后厨操作成本。",
+      "reason": "转化表现强，说明采购避坑内容更容易带来咨询，需要更完整的产品和话术支撑。",
+      "output": "采购避坑 checklist + 转化话术"
+    },
+    {
+      "id": "suggestion-004",
+      "type": "追热点",
+      "related": "夏季火锅淡季拉客",
+      "action": "围绕夏季淡季做一组小吃甜品、外卖组合、低成本高感知价值内容。",
+      "reason": "时间窗口明确，且与成本控制、客单价和套餐设计都能关联。",
+      "output": "5条夏季淡季经营选题"
+    }
+  ],
+  "priorityTopics": [
+    {
+      "id": "priority-001",
+      "title": "端午前火锅店备货，除了肉还要准备哪几类加购菜",
+      "priority": "高",
+      "reason": "热点窗口近，能关联节前备货、小吃甜品和套餐加购。",
+      "source": "端午前后聚餐和小长假备货"
+    },
+    {
+      "id": "priority-002",
+      "title": "夏天火锅店客流下滑，先别急着打折，先改这3类食材组合",
+      "priority": "高",
+      "reason": "季节经营痛点强，适合做短视频口播和图文清单。",
+      "source": "夏季火锅淡季拉客"
+    },
+    {
+      "id": "priority-003",
+      "title": "火锅店缩菜单，不是少上菜，而是让每道菜都有角色",
+      "priority": "高",
+      "reason": "可承接高收藏菜单设计内容，系列化潜力强。",
+      "source": "历史作品复用"
+    },
+    {
+      "id": "priority-004",
+      "title": "采购食材只看单价，为什么最后反而更贵",
+      "priority": "中",
+      "reason": "高转化选题的二次改编，适合沉淀采购避坑系列。",
+      "source": "历史作品复用"
+    },
+    {
+      "id": "priority-005",
+      "title": "新开火锅店第一张菜单，哪些菜负责引流，哪些菜负责赚钱",
+      "priority": "中",
+      "reason": "目标用户明确，可连接新店菜单、套餐和供应链产品。",
+      "source": "新店开业套餐和引流菜设计"
+    }
+  ],
+  "reviews": [
+    {
+      "id": "review-001",
+      "topicTitle": "鸭肠、毛肚、黄喉，谁更适合做门店招牌",
+      "publishDate": "2026-01-08",
+      "platform": "抖音",
+      "views": 18400,
+      "likes": 512,
+      "saves": 138,
+      "comments": 61,
+      "conversions": 11,
+      "conclusion": "对比型内容互动强，评论区采购咨询多，继续做招牌菜系列。"
+    },
+    {
+      "id": "review-002",
+      "topicTitle": "餐饮老板采购食材，不能只看单价",
+      "publishDate": "2026-01-12",
+      "platform": "视频号",
+      "views": 15200,
+      "likes": 402,
+      "saves": 126,
+      "comments": 47,
+      "conversions": 10,
+      "conclusion": "采购避坑内容转化强，适合沉淀成采购 checklist。"
+    },
+    {
+      "id": "review-003",
+      "topicTitle": "火锅店菜单设计，哪些菜适合引流，哪些菜适合赚钱",
+      "publishDate": "2026-01-15",
+      "platform": "视频号",
+      "views": 9900,
+      "likes": 241,
+      "saves": 112,
+      "comments": 33,
+      "conversions": 6,
+      "conclusion": "收藏率较高，说明结构型内容适合做系列和模板。"
+    }
+  ],
+  "topicCategories": [
+    "行业热点选题",
+    "节气节日选题",
+    "产品种草选题",
+    "B端经营选题",
+    "用户痛点选题",
+    "爆品打造选题",
+    "系列化选题"
+  ],
+  "productions": []
+}
