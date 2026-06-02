@@ -7,7 +7,8 @@
     "dev": "node server/dev.mjs",
     "dev:vite": "vite --host 127.0.0.1",
     "build": "tsc -b && vite build",
-    "preview": "vite preview --host 127.0.0.1"
+    "preview": "vite preview --host 127.0.0.1",
+    "start": "node server/prod.mjs"
   },
   "dependencies": {
     "@vitejs/plugin-react": "^5.0.0",

@@ -1,10 +1,12 @@
-import { readFileSync, renameSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
+import { getBooleanEnv } from "../config.mjs";
 
-export const contentPath = resolve(process.cwd(), "src/data/content.json");
+export const contentPath = resolve(process.cwd(), process.env.CONTENT_STORAGE_PATH || "src/data/content.json");
 
 const rootKeys = [
   "positioning",
+  "industryProfiles",
   "columns",
   "topics",
   "scriptTemplates",
@@ -17,6 +19,8 @@ const rootKeys = [
   "topicCategories",
   "productions",
 ];
+
+const industryIds = ["hotpot", "bbq"];
 
 const topicCategories = [
   "行业热点选题",
@@ -33,10 +37,17 @@ const priorities = ["高", "中", "低"];
 const productionSteps = ["topic", "research", "template", "script", "materials", "publish", "review"];
 
 export function readContent() {
+  if (!existsSync(contentPath)) {
+    const error = new Error(`内容数据文件不存在：${contentPath}`);
+    error.statusCode = 500;
+    error.code = "CONTENT_FILE_MISSING";
+    throw error;
+  }
   return JSON.parse(readFileSync(contentPath, "utf8"));
 }
 
 export function saveContent(nextContent) {
+  assertWritable();
   validateContent(nextContent);
   writeContent(nextContent);
   return {
@@ -47,10 +58,21 @@ export function saveContent(nextContent) {
 }
 
 export function writeContent(content) {
+  assertWritable();
   const serialized = `${JSON.stringify(content, null, 2)}\n`;
+  mkdirSync(dirname(contentPath), { recursive: true });
   const tempPath = resolve(dirname(contentPath), `.content.${Date.now()}.${process.pid}.tmp`);
   writeFileSync(tempPath, serialized, "utf8");
   renameSync(tempPath, contentPath);
+}
+
+function assertWritable() {
+  if (getBooleanEnv("CONTENT_READONLY", false)) {
+    const error = new Error("当前环境已开启只读模式，禁止写入内容数据。");
+    error.statusCode = 403;
+    error.code = "CONTENT_READONLY";
+    throw error;
+  }
 }
 
 export function validateContent(content) {
@@ -59,6 +81,7 @@ export function validateContent(content) {
   rootKeys.forEach((key) => assertHas(content, key, "content"));
 
   validatePositioning(content.positioning);
+  assertArray(content.industryProfiles, "content.industryProfiles").forEach(validateIndustryProfile);
   assertStringArray(content.columns, "content.columns", { nonEmpty: true });
   assertStringArray(content.topicCategories, "content.topicCategories", { allowed: topicCategories, exact: topicCategories });
   assertArray(content.topics, "content.topics").forEach(validateTopic);
@@ -81,6 +104,101 @@ function validatePositioning(value) {
   assertStringArray(value.platforms, "content.positioning.platforms", { nonEmpty: true });
 }
 
+function validateIndustryProfile(profile, index) {
+  const path = `content.industryProfiles[${index}]`;
+  assertObject(profile, path);
+  assertKnownKeys(
+    profile,
+    [
+      "id",
+      "label",
+      "name",
+      "audience",
+      "promise",
+      "style",
+      "platforms",
+      "conversionGoal",
+      "columns",
+      "quickTopics",
+      "defaultTopicCandidate",
+      "defaultResearch",
+      "dashboard",
+      "searchKeywords",
+    ],
+    path,
+  );
+  assertEnum(profile.id, industryIds, `${path}.id`);
+  ["label", "name", "audience", "promise", "style", "conversionGoal"].forEach((key) => assertString(profile[key], `${path}.${key}`));
+  assertStringArray(profile.platforms, `${path}.platforms`, { nonEmpty: true });
+  assertStringArray(profile.columns, `${path}.columns`, { nonEmpty: true });
+  assertStringArray(profile.quickTopics, `${path}.quickTopics`, { nonEmpty: true });
+
+  assertObject(profile.defaultTopicCandidate, `${path}.defaultTopicCandidate`);
+  assertKnownKeys(profile.defaultTopicCandidate, ["category", "query", "targetUser", "column"], `${path}.defaultTopicCandidate`);
+  ["category", "query", "targetUser", "column"].forEach((key) => assertString(profile.defaultTopicCandidate[key], `${path}.defaultTopicCandidate.${key}`));
+
+  assertObject(profile.defaultResearch, `${path}.defaultResearch`);
+  assertKnownKeys(profile.defaultResearch, ["query", "targetUser", "column"], `${path}.defaultResearch`);
+  ["query", "targetUser", "column"].forEach((key) => assertString(profile.defaultResearch[key], `${path}.defaultResearch.${key}`));
+
+  assertObject(profile.dashboard, `${path}.dashboard`);
+  assertKnownKeys(
+    profile.dashboard,
+    ["kicker", "subtitle", "heroTitle", "heroDescription", "heroTopic", "stats", "workflowSteps", "assetCards", "weeklyPlan"],
+    `${path}.dashboard`,
+  );
+  ["kicker", "subtitle", "heroTitle", "heroDescription"].forEach((key) => assertString(profile.dashboard[key], `${path}.dashboard.${key}`));
+  validateIndustryHeroTopic(profile.dashboard.heroTopic, `${path}.dashboard.heroTopic`);
+  assertArray(profile.dashboard.stats, `${path}.dashboard.stats`).forEach((item, statIndex) => validateIndustryStat(item, `${path}.dashboard.stats[${statIndex}]`));
+  assertArray(profile.dashboard.workflowSteps, `${path}.dashboard.workflowSteps`).forEach((item, stepIndex) =>
+    validateIndustryWorkflowStep(item, `${path}.dashboard.workflowSteps[${stepIndex}]`),
+  );
+  assertArray(profile.dashboard.assetCards, `${path}.dashboard.assetCards`).forEach((item, cardIndex) =>
+    validateIndustryAssetCard(item, `${path}.dashboard.assetCards[${cardIndex}]`),
+  );
+  assertArray(profile.dashboard.weeklyPlan, `${path}.dashboard.weeklyPlan`).forEach((item, planIndex) =>
+    validateIndustryPlanEntry(item, `${path}.dashboard.weeklyPlan[${planIndex}]`),
+  );
+
+  assertObject(profile.searchKeywords, `${path}.searchKeywords`);
+  assertKnownKeys(
+    profile.searchKeywords,
+    ["dashboardDecision", "hotspotMatch", "topicExpand", "materialSuggestion", "general", "candidate"],
+    `${path}.searchKeywords`,
+  );
+  Object.keys(profile.searchKeywords).forEach((key) => assertString(profile.searchKeywords[key], `${path}.searchKeywords.${key}`));
+}
+
+function validateIndustryHeroTopic(value, path) {
+  assertObject(value, path);
+  assertKnownKeys(value, ["title", "targetUser", "contentType", "productAssociation", "platform"], path);
+  ["title", "targetUser", "contentType", "productAssociation", "platform"].forEach((key) => assertString(value[key], `${path}.${key}`));
+}
+
+function validateIndustryStat(value, path) {
+  assertObject(value, path);
+  assertKnownKeys(value, ["label", "value", "detail"], path);
+  ["label", "value", "detail"].forEach((key) => assertString(value[key], `${path}.${key}`));
+}
+
+function validateIndustryWorkflowStep(value, path) {
+  assertObject(value, path);
+  assertKnownKeys(value, ["icon", "title", "detail"], path);
+  ["icon", "title", "detail"].forEach((key) => assertString(value[key], `${path}.${key}`));
+}
+
+function validateIndustryAssetCard(value, path) {
+  assertObject(value, path);
+  assertKnownKeys(value, ["title", "detail", "count", "updated"], path);
+  ["title", "detail", "count", "updated"].forEach((key) => assertString(value[key], `${path}.${key}`));
+}
+
+function validateIndustryPlanEntry(value, path) {
+  assertObject(value, path);
+  assertKnownKeys(value, ["day", "theme", "output"], path);
+  ["day", "theme", "output"].forEach((key) => assertString(value[key], `${path}.${key}`));
+}
+
 function validateTopic(topic, index) {
   const path = `content.topics[${index}]`;
   assertObject(topic, path);
@@ -91,6 +209,7 @@ function validateTopic(topic, index) {
       "title",
       "column",
       "topicCategory",
+      "industry",
       "contentType",
       "targetUser",
       "painPoint",
@@ -125,6 +244,7 @@ function validateTopic(topic, index) {
     "format",
     "review",
   ].forEach((key) => assertString(topic[key], `${path}.${key}`));
+  if ("industry" in topic) assertEnum(topic.industry, industryIds, `${path}.industry`);
   assertEnum(topic.topicCategory, topicCategories, `${path}.topicCategory`);
   assertEnum(topic.scriptStatus, scriptStatuses, `${path}.scriptStatus`);
   validateMetrics(topic.publishData, `${path}.publishData`, ["views", "likes", "saves", "comments", "conversions"]);
@@ -137,8 +257,9 @@ function validateTopic(topic, index) {
 function validateScriptTemplate(template, index) {
   const path = `content.scriptTemplates[${index}]`;
   assertObject(template, path);
-  assertKnownKeys(template, ["id", "name", "scenario", "steps", "opener", "platforms"], path);
+  assertKnownKeys(template, ["id", "name", "scenario", "steps", "opener", "platforms", "industry"], path);
   ["id", "name", "scenario", "opener"].forEach((key) => assertString(template[key], `${path}.${key}`));
+  if ("industry" in template) assertEnum(template.industry, industryIds, `${path}.industry`);
   assertStringArray(template.steps, `${path}.steps`, { nonEmpty: true });
   assertStringArray(template.platforms, `${path}.platforms`, { nonEmpty: true });
 }
@@ -146,49 +267,55 @@ function validateScriptTemplate(template, index) {
 function validatePrompt(prompt, index) {
   const path = `content.prompts[${index}]`;
   assertObject(prompt, path);
-  assertKnownKeys(prompt, ["id", "purpose", "audience", "body", "outputFields"], path);
+  assertKnownKeys(prompt, ["id", "purpose", "audience", "body", "outputFields", "industry"], path);
   ["id", "purpose", "audience", "body"].forEach((key) => assertString(prompt[key], `${path}.${key}`));
+  if ("industry" in prompt) assertEnum(prompt.industry, industryIds, `${path}.industry`);
   assertStringArray(prompt.outputFields, `${path}.outputFields`, { nonEmpty: true });
 }
 
 function validateMaterialSection(section, index) {
   const path = `content.materials[${index}]`;
   assertObject(section, path);
-  assertKnownKeys(section, ["id", "title", "description", "items"], path);
+  assertKnownKeys(section, ["id", "title", "description", "items", "industry"], path);
   ["id", "title", "description"].forEach((key) => assertString(section[key], `${path}.${key}`));
+  if ("industry" in section) assertEnum(section.industry, industryIds, `${path}.industry`);
   assertStringArray(section.items, `${path}.items`);
 }
 
 function validateHotspot(hotspot, index) {
   const path = `content.hotspots[${index}]`;
   assertObject(hotspot, path);
-  assertKnownKeys(hotspot, ["id", "title", "type", "window", "matchedColumn", "targetUser", "recommendedAngle", "priority"], path);
+  assertKnownKeys(hotspot, ["id", "title", "type", "window", "matchedColumn", "targetUser", "recommendedAngle", "priority", "industry"], path);
   ["id", "title", "type", "window", "matchedColumn", "targetUser", "recommendedAngle"].forEach((key) =>
     assertString(hotspot[key], `${path}.${key}`),
   );
+  if ("industry" in hotspot) assertEnum(hotspot.industry, industryIds, `${path}.industry`);
   assertEnum(hotspot.priority, priorities, `${path}.priority`);
 }
 
 function validateIterationSuggestion(suggestion, index) {
   const path = `content.iterationSuggestions[${index}]`;
   assertObject(suggestion, path);
-  assertKnownKeys(suggestion, ["id", "type", "related", "action", "reason", "output"], path);
+  assertKnownKeys(suggestion, ["id", "type", "related", "action", "reason", "output", "industry"], path);
   ["id", "type", "related", "action", "reason", "output"].forEach((key) => assertString(suggestion[key], `${path}.${key}`));
+  if ("industry" in suggestion) assertEnum(suggestion.industry, industryIds, `${path}.industry`);
 }
 
 function validatePriorityTopic(topic, index) {
   const path = `content.priorityTopics[${index}]`;
   assertObject(topic, path);
-  assertKnownKeys(topic, ["id", "title", "priority", "reason", "source"], path);
+  assertKnownKeys(topic, ["id", "title", "priority", "reason", "source", "industry"], path);
   ["id", "title", "reason", "source"].forEach((key) => assertString(topic[key], `${path}.${key}`));
+  if ("industry" in topic) assertEnum(topic.industry, industryIds, `${path}.industry`);
   assertEnum(topic.priority, priorities, `${path}.priority`);
 }
 
 function validateReview(review, index) {
   const path = `content.reviews[${index}]`;
   assertObject(review, path);
-  assertKnownKeys(review, ["id", "topicTitle", "publishDate", "platform", "views", "likes", "saves", "comments", "conversions", "conclusion"], path);
+  assertKnownKeys(review, ["id", "topicTitle", "publishDate", "platform", "views", "likes", "saves", "comments", "conversions", "conclusion", "industry"], path);
   ["id", "topicTitle", "publishDate", "platform", "conclusion"].forEach((key) => assertString(review[key], `${path}.${key}`));
+  if ("industry" in review) assertEnum(review.industry, industryIds, `${path}.industry`);
   ["views", "likes", "saves", "comments", "conversions"].forEach((key) => assertNonNegativeNumber(review[key], `${path}.${key}`));
 }
 
@@ -197,10 +324,11 @@ function validateProduction(production, index) {
   assertObject(production, path);
   assertKnownKeys(
     production,
-    ["topicId", "currentStep", "researchNotes", "selectedTemplateId", "scriptDraft", "matchedMaterials", "publishDraft", "reviewDraft", "updatedAt"],
+    ["topicId", "currentStep", "researchNotes", "selectedTemplateId", "scriptDraft", "matchedMaterials", "publishDraft", "reviewDraft", "updatedAt", "industry"],
     path,
   );
   ["topicId", "researchNotes", "selectedTemplateId", "updatedAt"].forEach((key) => assertString(production[key], `${path}.${key}`));
+  if ("industry" in production) assertEnum(production.industry, industryIds, `${path}.industry`);
   assertEnum(production.currentStep, productionSteps, `${path}.currentStep`);
 
   assertObject(production.scriptDraft, `${path}.scriptDraft`);

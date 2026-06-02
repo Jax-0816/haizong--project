@@ -1,0 +1,21 @@
+import { getEnv } from "./config.mjs";
+
+export function getAppRuntimeConfig() {
+  return {
+    AUTH_MODE: getEnv("AUTH_MODE", "local"),
+    AUTH_API_BASE_URL: getEnv("AUTH_API_BASE_URL", ""),
+    LOGIN_ENDPOINT: getEnv("AUTH_LOGIN_ENDPOINT", "/api/auth/login"),
+    PROFILE_ENDPOINT: getEnv("AUTH_PROFILE_ENDPOINT", "/api/auth/profile"),
+    LOGOUT_ENDPOINT: getEnv("AUTH_LOGOUT_ENDPOINT", "/api/auth/logout"),
+    VALIDATE_ENDPOINT: getEnv("AUTH_VALIDATE_ENDPOINT", "/api/auth/validate"),
+    LOGIN_PAGE: getEnv("AUTH_LOGIN_PAGE", "/login.html"),
+    HOME_PAGE: getEnv("AUTH_HOME_PAGE", "/index.html"),
+    STORAGE_KEY: getEnv("AUTH_STORAGE_KEY", "haizong.auth.session.v1"),
+    SESSION_TTL_MS: Number(getEnv("AUTH_SESSION_TTL_MS", String(8 * 60 * 60 * 1000))),
+    LOCAL_CREDENTIALS: {
+      username: getEnv("AUTH_LOCAL_USERNAME", "admin"),
+      password: getEnv("AUTH_LOCAL_PASSWORD", "123456"),
+      displayName: getEnv("AUTH_LOCAL_DISPLAY_NAME", "海总管理员"),
+    },
+  };
+}

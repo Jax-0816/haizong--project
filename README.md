@@ -35,7 +35,19 @@ http://127.0.0.1:4280/
 
 ```bash
 npm run build
+npm run start
 ```
+
+生产环境默认读取：
+
+```text
+.env
+.env.production
+.env.local
+.env.production.local
+```
+
+建议云上使用 `.env.production.local`，不要提交真实密钥。
 
 ## 双击启动
 
@@ -73,6 +85,24 @@ http://127.0.0.1:4280/
 - macOS 第一次双击 `.command` 文件时，如果系统阻止运行，请在“系统设置 > 隐私与安全性”里允许，或右键后选择“打开”。
 - Windows 第一次运行脚本时，如果系统弹出安全提示，请确认来源是你自己的项目目录后再继续。
 - 关闭终端或命令行窗口后，本地开发服务会停止。
+
+## 上云建议
+
+当前仓库已经支持“开发 / 生产”分离运行：
+
+- 开发环境：`npm run dev`
+- 生产环境：先 `npm run build`，再 `npm run start`
+
+如果只是先做阿里云 ECS 内部试运行，推荐继续使用前后端一体部署：
+
+1. 把整个项目传到 ECS
+2. 安装 Node.js 20+
+3. 配置 `.env.production.local`
+4. 执行 `npm install`
+5. 执行 `npm run build`
+6. 执行 `npm run start`
+
+部署细节见 [docs/aliyun-ecs-deploy.md](/Users/mac/Desktop/haizong-%20project/docs/aliyun-ecs-deploy.md:1)。
 
 ## 文档说明
 

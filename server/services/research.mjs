@@ -1,19 +1,23 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { getIndustryProfile, normalizeIndustryId } from "./industry.mjs";
 import { generateResearchInsight } from "./llm.mjs";
 import { searchWeb } from "./search.mjs";
 
 const content = JSON.parse(readFileSync(resolve(process.cwd(), "src/data/content.json"), "utf8"));
 
 export async function runResearch(request) {
+  const industry = normalizeIndustryId(request.industry);
   const sources = await searchWeb({
-    query: buildSearchQuery(request),
+    query: buildSearchQuery(request, industry),
     freshness: request.freshness,
   });
 
   const modelResult = await generateResearchInsight({
     request,
+    industry,
     accountContext: {
+      industryProfile: getIndustryProfile(content, industry),
       positioning: content.positioning,
       columns: content.columns,
       materials: content.materials,
@@ -25,17 +29,18 @@ export async function runResearch(request) {
   return normalizeResearchResult({ request, sources, modelResult });
 }
 
-function buildSearchQuery(request) {
+function buildSearchQuery(request, industry) {
+  const profile = getIndustryProfile(content, industry);
   const intent =
     request.mode === "dashboardDecision"
-      ? "餐饮 火锅 供应链 经营 趋势 内容选题"
+      ? profile?.searchKeywords?.dashboardDecision
       : request.mode === "hotspotMatch"
-        ? "餐饮 火锅 热点 经营 供应链"
+        ? profile?.searchKeywords?.hotspotMatch
         : request.mode === "topicExpand"
-          ? "餐饮 火锅 爆品 选题 案例 经营"
+          ? profile?.searchKeywords?.topicExpand
           : request.mode === "materialSuggestion"
-            ? "餐饮 火锅 供应链 素材 案例 复盘"
-            : "";
+            ? profile?.searchKeywords?.materialSuggestion
+            : profile?.searchKeywords?.general;
 
   return truncateSearchQuery([request.query, request.targetUser, request.column, intent].filter(Boolean).join(" "));
 }

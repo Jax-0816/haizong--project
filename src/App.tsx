@@ -17,10 +17,14 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import data from "./data/content.json";
+import { activeIndustryStorageKey, adaptIndustryText, defaultIndustryId, getIndustryProfile, normalizeIndustryId } from "./industry";
 import type {
+  IndustryId,
+  IndustryProfile,
   HotspotOpportunity,
   ContentProduction,
   IterationSuggestion,
+  MaterialSection,
   PriorityTopic,
   PromptTemplate,
   GeneratedTopicCandidate,
@@ -64,14 +68,6 @@ const viewDescriptions: Record<ViewId, string> = {
 
 const statusOrder: ScriptStatus[] = ["未写", "已写", "已拍", "已发"];
 const topicCategories = data.topicCategories as TopicCategory[];
-const columnFilterOptions = [
-  { value: "火锅食材选品指南", label: "选品指南" },
-  { value: "火锅店爆品打造", label: "爆品打造" },
-  { value: "火锅店成本控制", label: "成本控制" },
-  { value: "节日节气备货建议", label: "节气备货" },
-  { value: "餐饮老板避坑指南", label: "老板避坑" },
-  { value: "食材供应链知识", label: "供应链知识" },
-];
 const sourceFilterOptions = ["行业热点", "节日节气", "用户痛点", "产品卖点", "B端经营", "供应链趋势", "系列延展"] as const;
 const contentStatusOptions = ["待撰写", "已撰写", "待优化", "已发布"] as const;
 type SourceFilter = "全部来源" | (typeof sourceFilterOptions)[number];
@@ -88,23 +84,6 @@ const productionSteps: Array<{ id: ProductionStep; label: string; description: s
 const researchHistoryKey = "haizong.research.history.v1";
 const dashboardAiKey = "haizong.dashboard.ai.v1";
 const productionTopicIdsKey = "haizong.production.topic-ids.v1";
-const defaultTopicCandidateForm: TopicCandidateGenerateRequest = {
-  category: topicCategories[0],
-  query: "火锅店近期经营热点",
-  targetUser: "火锅店老板",
-  column: data.columns[0],
-  freshness: "oneMonth",
-  notes: "",
-  limit: 5,
-};
-const defaultResearchForm: ResearchRequest = {
-  mode: "general",
-  query: "夏季火锅淡季拉客",
-  targetUser: "火锅店老板",
-  column: "火锅店成本控制",
-  freshness: "oneMonth",
-  notes: "",
-};
 const freshnessOptions: Array<{ value: ResearchFreshness; label: string }> = [
   { value: "noLimit", label: "不限时间" },
   { value: "oneDay", label: "近一天" },
@@ -113,8 +92,9 @@ const freshnessOptions: Array<{ value: ResearchFreshness; label: string }> = [
   { value: "oneYear", label: "近一年" },
 ];
 
-const emptyProduction = (topicId: string): ContentProduction => ({
+const emptyProduction = (topicId: string, industry: IndustryId = defaultTopicIndustry): ContentProduction => ({
   topicId,
+  industry,
   currentStep: "topic",
   researchNotes: "",
   selectedTemplateId: "",
@@ -137,8 +117,29 @@ const emptyProduction = (topicId: string): ContentProduction => ({
 
 const formatNumber = (value: number) => new Intl.NumberFormat("zh-CN").format(value);
 
+const industryProfiles = data.industryProfiles as IndustryProfile[];
+const defaultProfile = industryProfiles[0] ?? null;
+const defaultTopicIndustry = defaultProfile?.id ?? defaultIndustryId;
 function getColumnLabel(columnValue: string) {
-  return columnFilterOptions.find((item) => item.value === columnValue)?.label ?? columnValue;
+  if (columnValue.includes("选品指南")) {
+    return "选品指南";
+  }
+  if (columnValue.includes("爆品打造")) {
+    return "爆品打造";
+  }
+  if (columnValue.includes("成本控制")) {
+    return "成本控制";
+  }
+  if (columnValue.includes("节日节气备货建议")) {
+    return "节气备货";
+  }
+  if (columnValue.includes("避坑指南")) {
+    return "老板避坑";
+  }
+  if (columnValue.includes("供应链知识")) {
+    return "供应链知识";
+  }
+  return columnValue;
 }
 
 function getSourceLabel(topic: Topic): SourceFilter {
@@ -167,6 +168,43 @@ function getSourceLabel(topic: Topic): SourceFilter {
   }
 
   return "行业热点";
+}
+
+function getTopicIndustry(topic: Topic): IndustryId {
+  return normalizeIndustryId(topic.industry, defaultTopicIndustry);
+}
+
+function getReviewIndustry(review: ReviewRecord): IndustryId {
+  return normalizeIndustryId((review as ReviewRecord & { industry?: IndustryId }).industry, defaultTopicIndustry);
+}
+
+function buildDefaultTopicCandidateForm(profile: IndustryProfile): TopicCandidateGenerateRequest {
+  return {
+    industry: profile.id,
+    category: profile.defaultTopicCandidate.category,
+    query: profile.defaultTopicCandidate.query,
+    targetUser: profile.defaultTopicCandidate.targetUser,
+    column: profile.defaultTopicCandidate.column,
+    freshness: "oneMonth",
+    notes: "",
+    limit: 5,
+  };
+}
+
+function buildDefaultResearchForm(profile: IndustryProfile): ResearchRequest {
+  return {
+    industry: profile.id,
+    mode: "general",
+    query: profile.defaultResearch.query,
+    targetUser: profile.defaultResearch.targetUser,
+    column: profile.defaultResearch.column,
+    freshness: "oneMonth",
+    notes: "",
+  };
+}
+
+function storageKeyForIndustry(baseKey: string, industryId: IndustryId) {
+  return `${baseKey}.${industryId}`;
 }
 
 function getContentStatusLabel(topic: Topic): ContentStatusFilter {
@@ -218,30 +256,65 @@ declare global {
 }
 
 function App() {
-  const defaultProductionTopicIds = useMemo(() => (data.topics as Topic[]).map((topic) => topic.id), []);
+  const defaultProductionTopicIdsByIndustry = useMemo(() => {
+    const hotpotIds = (data.topics as Topic[])
+      .filter((topic) => getTopicIndustry(topic) === "hotpot")
+      .map((topic) => topic.id);
+    const bbqIds = (data.topics as Topic[])
+      .filter((topic) => getTopicIndustry(topic) === "bbq")
+      .map((topic) => topic.id);
+
+    return {
+      hotpot: hotpotIds,
+      bbq: bbqIds,
+    };
+  }, []);
+  const [activeIndustry, setActiveIndustry] = useState<IndustryId>(() => {
+    if (typeof window === "undefined") {
+      return defaultTopicIndustry;
+    }
+
+    try {
+      const saved = window.localStorage.getItem(activeIndustryStorageKey);
+      return normalizeIndustryId(saved, defaultTopicIndustry);
+    } catch {
+      return defaultTopicIndustry;
+    }
+  });
+  const activeIndustryProfile = useMemo(
+    () => getIndustryProfile(industryProfiles, activeIndustry) ?? defaultProfile,
+    [activeIndustry],
+  );
+  const resolvedIndustryProfile = (activeIndustryProfile ?? industryProfiles[0]) as IndustryProfile;
   const [activeView, setActiveView] = useState<ViewId>("dashboard");
   const [query, setQuery] = useState("");
   const [column, setColumn] = useState("全部栏目");
   const [sourceFilter, setSourceFilter] = useState<SourceFilter>("全部来源");
   const [contentStatus, setContentStatus] = useState<ContentStatusFilter>("全部状态");
-  const [selectedTopicId, setSelectedTopicId] = useState(data.topics[0]?.id ?? "");
-  const [productionTopicId, setProductionTopicId] = useState(data.topics[0]?.id ?? "");
-  const [productionTopicIds, setProductionTopicIds] = useState<string[]>(() => {
+  const [selectedTopicId, setSelectedTopicId] = useState("");
+  const [productionTopicId, setProductionTopicId] = useState("");
+  const [productionTopicIdsByIndustry, setProductionTopicIdsByIndustry] = useState<Record<IndustryId, string[]>>(() => {
     if (typeof window === "undefined") {
-      return defaultProductionTopicIds;
+      return defaultProductionTopicIdsByIndustry;
     }
 
     try {
       const saved = window.localStorage.getItem(productionTopicIdsKey);
       if (!saved) {
-        return defaultProductionTopicIds;
+        return defaultProductionTopicIdsByIndustry;
       }
 
       const parsed = JSON.parse(saved);
-      return Array.isArray(parsed) ? parsed.map((item) => String(item)).filter(Boolean) : defaultProductionTopicIds;
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+        return {
+          hotpot: Array.isArray(parsed.hotpot) ? parsed.hotpot.map((item: unknown) => String(item)).filter(Boolean) : defaultProductionTopicIdsByIndustry.hotpot,
+          bbq: Array.isArray(parsed.bbq) ? parsed.bbq.map((item: unknown) => String(item)).filter(Boolean) : defaultProductionTopicIdsByIndustry.bbq,
+        };
+      }
+      return defaultProductionTopicIdsByIndustry;
     } catch {
       window.localStorage.removeItem(productionTopicIdsKey);
-      return defaultProductionTopicIds;
+      return defaultProductionTopicIdsByIndustry;
     }
   });
   const [copiedPromptId, setCopiedPromptId] = useState("");
@@ -254,9 +327,24 @@ function App() {
   );
   const [reviews, setReviews] = useState<ReviewRecord[]>(() => data.reviews as ReviewRecord[]);
 
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(activeIndustryStorageKey, activeIndustry);
+    }
+  }, [activeIndustry]);
+
+  useEffect(() => {
+    setSelectedTopicId("");
+  }, [activeIndustry]);
+
+  const visibleTopics = useMemo(
+    () => topics.filter((topic) => getTopicIndustry(topic) === activeIndustry),
+    [activeIndustry, topics],
+  );
+
   const filteredTopics = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
-    return topics.filter((topic) => {
+    return visibleTopics.filter((topic) => {
       const matchesQuery =
         normalizedQuery.length === 0 ||
         [topic.title, topic.contentType, topic.targetUser, topic.painPoint, topic.angle, topic.coreView]
@@ -268,31 +356,31 @@ function App() {
       const matchesStatus = contentStatus === "全部状态" || getContentStatusLabel(topic) === contentStatus;
       return matchesQuery && matchesColumn && matchesSource && matchesStatus;
     });
-  }, [column, contentStatus, query, sourceFilter, topics]);
+  }, [column, contentStatus, query, sourceFilter, visibleTopics]);
 
   const selectedTopic = useMemo(() => {
-    return filteredTopics.find((topic) => topic.id === selectedTopicId) ?? filteredTopics[0] ?? topics[0];
-  }, [filteredTopics, selectedTopicId, topics]);
+    return filteredTopics.find((topic) => topic.id === selectedTopicId) ?? filteredTopics[0] ?? visibleTopics[0];
+  }, [filteredTopics, selectedTopicId, visibleTopics]);
 
   const metrics = useMemo(() => {
-    const totalViews = topics.reduce((sum, topic) => sum + topic.publishData.views, 0);
-    const published = topics.filter((topic) => topic.scriptStatus === "已发").length;
-    const needsReview = topics.filter(
+    const totalViews = visibleTopics.reduce((sum, topic) => sum + topic.publishData.views, 0);
+    const published = visibleTopics.filter((topic) => topic.scriptStatus === "已发").length;
+    const needsReview = visibleTopics.filter(
       (topic) => topic.publishData.views > 0 && topic.review.includes("待"),
     ).length;
     const statusCounts = statusOrder.map((item) => ({
       label: item,
-      count: topics.filter((topic) => topic.scriptStatus === item).length,
+      count: visibleTopics.filter((topic) => topic.scriptStatus === item).length,
     }));
-    const columnCounts = data.columns.map((item) => ({
+    const columnCounts = activeIndustryProfile.columns.map((item) => ({
       label: item,
-      count: topics.filter((topic) => topic.column === item).length,
+      count: visibleTopics.filter((topic) => topic.column === item).length,
     }));
     return { totalViews, published, needsReview, statusCounts, columnCounts };
-  }, [topics]);
+  }, [activeIndustryProfile.columns, visibleTopics]);
 
-  const copyPrompt = async (prompt: PromptTemplate) => {
-    const text = `${prompt.body}\n\n输出字段：${prompt.outputFields.join("、")}`;
+  const copyPrompt = async (prompt: PromptTemplate, profile: IndustryProfile) => {
+    const text = `${adaptIndustryText(prompt.body, profile)}\n\n输出字段：${prompt.outputFields.join("、")}`;
     await navigator.clipboard.writeText(text);
     setCopiedPromptId(prompt.id);
     window.setTimeout(() => setCopiedPromptId(""), 1600);
@@ -320,86 +408,116 @@ function App() {
   }, []);
 
   useEffect(() => {
-    const validTopicIds = new Set(topics.map((topic) => topic.id));
-
-    setProductionTopicIds((current) => {
-      const filtered = current.filter((topicId) => validTopicIds.has(topicId));
-      const nextIds = filtered.length > 0 ? filtered : current.length === 0 ? [] : defaultProductionTopicIds.filter((topicId) => validTopicIds.has(topicId));
-      return filtered.length === current.length && filtered.every((topicId, index) => topicId === current[index]) ? current : nextIds;
+    setProductionTopicIdsByIndustry((current) => {
+      const currentIds = current[activeIndustry] ?? [];
+      const validTopicIds = new Set(visibleTopics.map((topic) => topic.id));
+      const filtered = currentIds.filter((topicId) => validTopicIds.has(topicId));
+      const nextIds = filtered.length > 0 ? filtered : defaultProductionTopicIdsByIndustry[activeIndustry].filter((topicId) => validTopicIds.has(topicId));
+      if (filtered.length === currentIds.length && filtered.every((topicId, index) => topicId === currentIds[index])) {
+        return current;
+      }
+      return { ...current, [activeIndustry]: nextIds };
     });
-  }, [defaultProductionTopicIds, topics]);
+  }, [activeIndustry, defaultProductionTopicIdsByIndustry, visibleTopics]);
 
   useEffect(() => {
     if (typeof window === "undefined") {
       return;
     }
 
-    window.localStorage.setItem(productionTopicIdsKey, JSON.stringify(productionTopicIds));
-  }, [productionTopicIds]);
+    window.localStorage.setItem(productionTopicIdsKey, JSON.stringify(productionTopicIdsByIndustry));
+  }, [productionTopicIdsByIndustry]);
 
   useEffect(() => {
-    const currentVisible = productionTopicIds.filter((topicId) => topics.some((topic) => topic.id === topicId));
+    const currentVisible = (productionTopicIdsByIndustry[activeIndustry] ?? []).filter((topicId) =>
+      visibleTopics.some((topic) => topic.id === topicId),
+    );
     if (currentVisible.length === 0) {
       if (productionTopicId) {
         setProductionTopicId("");
       }
       return;
     }
-
     if (!currentVisible.includes(productionTopicId)) {
       setProductionTopicId(currentVisible[0]);
     }
-  }, [productionTopicId, productionTopicIds, topics]);
+  }, [activeIndustry, productionTopicId, productionTopicIdsByIndustry, visibleTopics]);
 
   const ensureProductionTopicVisible = (topicId: string) => {
-    setProductionTopicIds((current) => (current.includes(topicId) ? current : [...current, topicId]));
+    setProductionTopicIdsByIndustry((current) => {
+      const currentIds = current[activeIndustry] ?? [];
+      return currentIds.includes(topicId)
+        ? current
+        : {
+            ...current,
+            [activeIndustry]: [...currentIds, topicId],
+          };
+    });
     setProductionTopicId(topicId);
   };
 
   const removeProductionTopic = (topicId: string) => {
-    setProductionTopicIds((current) => {
-      const index = current.indexOf(topicId);
+    setProductionTopicIdsByIndustry((current) => {
+      const currentIds = current[activeIndustry] ?? [];
+      const index = currentIds.indexOf(topicId);
       if (index === -1) {
         return current;
       }
 
-      const next = current.filter((item) => item !== topicId);
-      setProductionTopicId((currentSelected) => {
-        if (currentSelected !== topicId) {
-          return currentSelected;
-        }
-        return next[Math.min(index, next.length - 1)] ?? "";
-      });
-      return next;
+      const next = currentIds.filter((item) => item !== topicId);
+      if (productionTopicId === topicId) {
+        setProductionTopicId(next[Math.min(index, next.length - 1)] ?? "");
+      }
+      return {
+        ...current,
+        [activeIndustry]: next,
+      };
     });
   };
 
   return (
     <div className="app-shell">
       <aside className="sidebar" aria-label="主导航">
-        <div className="brand">
-          <div className="brand-mark">海哥</div>
-          <div>
-            <strong>海哥自媒体账号内容工作台</strong>
-            <span>火锅食材B端内容生产流程</span>
+        <div className="sidebar-brand-block">
+          <div className="brand">
+            <div className="brand-mark">海哥</div>
+            <div>
+              <strong>海哥自媒体账号内容工作台</strong>
+              <span>{resolvedIndustryProfile.name}</span>
+            </div>
           </div>
-        </div>
-        <nav className="nav-list">
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            return (
+          <div className="industry-switcher" role="tablist" aria-label="行业切换">
+            {industryProfiles.map((profile) => (
               <button
-                className={`nav-button ${activeView === item.id ? "active" : ""}`}
-                key={item.id}
-                onClick={() => setActiveView(item.id)}
+                className={`industry-switch ${activeIndustry === profile.id ? "active" : ""}`}
+                key={profile.id}
+                onClick={() => setActiveIndustry(profile.id)}
+                role="tab"
                 type="button"
               >
-                <Icon size={18} aria-hidden="true" />
-                <span>{item.label}</span>
+                {profile.label}
               </button>
-            );
-          })}
-          <div className="nav-auth">
+            ))}
+          </div>
+        </div>
+        <div className="sidebar-nav-block">
+          <nav className="nav-list nav-list-inline nav-list-sidebar" aria-label="页面切换">
+            {navItems.map((item) => {
+              const Icon = item.icon;
+              return (
+                <button
+                  className={`nav-button ${activeView === item.id ? "active" : ""}`}
+                  key={item.id}
+                  onClick={() => setActiveView(item.id)}
+                  type="button"
+                >
+                  <Icon size={16} aria-hidden="true" />
+                  <span>{item.label}</span>
+                </button>
+              );
+            })}
+          </nav>
+          <div className="nav-auth nav-auth-sidebar">
             <div className="nav-user">
               <strong>{session?.displayName ?? "已登录"}</strong>
               <span>{session?.username ?? "本地账号"}</span>
@@ -412,22 +530,32 @@ function App() {
               <span>退出登录</span>
             </button>
           </div>
-        </nav>
+        </div>
       </aside>
 
       <main className="workspace">
         <header className="topbar">
           <div>
-            <p className="eyebrow">Hot Pot Supply Chain Content</p>
+            <p className="eyebrow">{resolvedIndustryProfile.dashboard.kicker}</p>
             <h1>{navItems.find((item) => item.id === activeView)?.label}</h1>
             <div className="topbar-note-inline">{viewDescriptions[activeView]}</div>
           </div>
         </header>
 
-        {activeView === "dashboard" ? <Dashboard metrics={metrics} setActiveView={setActiveView} /> : null}
+        {activeView === "dashboard" ? (
+          <Dashboard
+            activeIndustry={activeIndustry}
+            industryProfile={resolvedIndustryProfile}
+            metrics={metrics}
+            topics={visibleTopics}
+            setActiveView={setActiveView}
+          />
+        ) : null}
 
         {activeView === "topics" ? (
           <TopicsView
+            activeIndustry={activeIndustry}
+            industryProfile={resolvedIndustryProfile}
             column={column}
             filteredTopics={filteredTopics}
             onTopicConfirmed={(topic) => {
@@ -452,6 +580,8 @@ function App() {
 
         {activeView === "production" ? (
           <ProductionView
+            activeIndustry={activeIndustry}
+            industryProfile={resolvedIndustryProfile}
             onProductionSaved={(production, review, topic) => {
               setProductions((current) => {
                 const existingIndex = current.findIndex((item) => item.topicId === production.topicId);
@@ -474,7 +604,7 @@ function App() {
               }
             }}
             productionTopicId={productionTopicId}
-            productionTopicIds={productionTopicIds}
+            productionTopicIds={productionTopicIdsByIndustry[activeIndustry] ?? []}
             productions={productions}
             removeProductionTopic={removeProductionTopic}
             setProductionTopicId={setProductionTopicId}
@@ -482,20 +612,27 @@ function App() {
           />
         ) : null}
 
-        {activeView === "research" ? <ResearchView /> : null}
-        {activeView === "scripts" ? <ScriptsView /> : null}
-        {activeView === "prompts" ? <PromptsView copiedPromptId={copiedPromptId} copyPrompt={copyPrompt} /> : null}
-        {activeView === "materials" ? <MaterialsView /> : null}
-        {activeView === "reviews" ? <ReviewsView reviews={reviews} /> : null}
+        {activeView === "research" ? <ResearchView activeIndustry={activeIndustry} industryProfile={resolvedIndustryProfile} /> : null}
+        {activeView === "scripts" ? <ScriptsView activeIndustry={activeIndustry} industryProfile={resolvedIndustryProfile} /> : null}
+        {activeView === "prompts" ? (
+          <PromptsView activeIndustry={activeIndustry} copiedPromptId={copiedPromptId} copyPrompt={copyPrompt} industryProfile={resolvedIndustryProfile} />
+        ) : null}
+        {activeView === "materials" ? <MaterialsView activeIndustry={activeIndustry} industryProfile={resolvedIndustryProfile} /> : null}
+        {activeView === "reviews" ? <ReviewsView activeIndustry={activeIndustry} industryProfile={resolvedIndustryProfile} reviews={reviews} /> : null}
       </main>
     </div>
   );
 }
 
 function Dashboard({
+  activeIndustry,
+  industryProfile,
   metrics,
+  topics,
   setActiveView,
 }: {
+  activeIndustry: IndustryId;
+  industryProfile: IndustryProfile;
   metrics: {
     totalViews: number;
     published: number;
@@ -503,27 +640,32 @@ function Dashboard({
     statusCounts: Array<{ label: string; count: number }>;
     columnCounts: Array<{ label: string; count: number }>;
   };
+  topics: Topic[];
   setActiveView: (view: ViewId) => void;
 }) {
-  const topics = data.topics as Topic[];
   const hotspots = data.hotspots as HotspotOpportunity[];
   const suggestions = data.iterationSuggestions as IterationSuggestion[];
   const priorityTopics = data.priorityTopics as PriorityTopic[];
-  const [dashboardFocus, setDashboardFocus] = useState("今天最值得优先做什么内容");
+  const [dashboardFocus, setDashboardFocus] = useState(industryProfile.dashboard.heroTitle);
   const [dashboardAi, setDashboardAi] = useState<DashboardAiState | null>(null);
   const [dashboardAiError, setDashboardAiError] = useState("");
   const [dashboardAiLoading, setDashboardAiLoading] = useState("");
+  const dashboardStorageKey = storageKeyForIndustry(dashboardAiKey, activeIndustry);
 
   useEffect(() => {
     try {
-      const saved = window.localStorage.getItem(dashboardAiKey);
+      const saved = window.localStorage.getItem(dashboardStorageKey);
       if (saved) {
         setDashboardAi(JSON.parse(saved) as DashboardAiState);
       }
     } catch {
-      window.localStorage.removeItem(dashboardAiKey);
+      window.localStorage.removeItem(dashboardStorageKey);
     }
-  }, []);
+  }, [dashboardStorageKey]);
+
+  useEffect(() => {
+    setDashboardFocus(industryProfile.dashboard.heroTitle);
+  }, [industryProfile]);
 
   const runDashboardAi = async (label: string, request: ResearchRequest) => {
     setDashboardAiLoading(label);
@@ -543,7 +685,7 @@ function Dashboard({
 
       const nextState = { label, result: payload as ResearchResult };
       setDashboardAi(nextState);
-      window.localStorage.setItem(dashboardAiKey, JSON.stringify(nextState));
+      window.localStorage.setItem(dashboardStorageKey, JSON.stringify(nextState));
     } catch (caught) {
       setDashboardAiError(caught instanceof Error ? caught.message : "AI 请求失败");
     } finally {
@@ -552,14 +694,23 @@ function Dashboard({
   };
 
   const requestTodayDecision = () => {
-    runDashboardAi("AI 今日决策", {
+    runDashboardAi(`${industryProfile.label}AI 今日决策`, {
+      industry: activeIndustry,
       mode: "dashboardDecision",
       query: dashboardFocus || "今日内容决策",
-      targetUser: data.positioning.audience,
+      targetUser: industryProfile.audience,
       column: "全部栏目",
       freshness: "oneMonth",
       notes: JSON.stringify({
-        positioning: data.positioning,
+        positioning: {
+          ...data.positioning,
+          name: industryProfile.name,
+          audience: industryProfile.audience,
+          promise: industryProfile.promise,
+          style: industryProfile.style,
+          conversionGoal: industryProfile.conversionGoal,
+        },
+        industryProfile,
         hotspots,
         priorityTopics,
         materials: data.materials,
@@ -623,56 +774,32 @@ function Dashboard({
       : null,
   ].filter(Boolean) as PerformanceInsight[];
 
-  const dashboardStats = [
-    { label: "选题池总数", value: "128", detail: "覆盖选品、爆品、成本、供应链" },
-    { label: "可拍摄选题", value: "36", detail: "已具备脚本或素材方向" },
-    { label: "本周待发布", value: "12", detail: "按节气和热点排期" },
-    { label: "高优先级热点", value: "5", detail: "需要 48 小时内响应" },
-    { label: "脚本模板", value: "18", detail: "痛点、避坑、清单、案例、种草" },
-    { label: "已复盘作品", value: "42", detail: "用于二次改编和选题回收" },
-  ];
-  const quickTopics = ["餐饮寒冬", "节气节日", "火锅爆品", "成本控制", "新品推荐", "门店经营"];
-  const workflowSteps = [
-    { icon: "01", title: "账号定位", detail: "锁定火锅食材供应链的 B 端表达边界" },
-    { icon: "02", title: "用户痛点", detail: "从老板、采购、后厨负责人的真实问题出发" },
-    { icon: "03", title: "热点抓取", detail: "结合节气、行业趋势和门店经营窗口" },
-    { icon: "04", title: "AI生成选题", detail: "把调研依据转成可执行内容方向" },
-    { icon: "05", title: "人工筛选", detail: "判断业务价值、产品关联和可拍摄性" },
-    { icon: "06", title: "脚本生产", detail: "套用结构，生成口播、画面和结尾引导" },
-    { icon: "07", title: "发布复盘", detail: "用数据反推下周选题和素材补充" },
-  ];
-  const assetCards = [
-    { title: "用户痛点库", detail: "沉淀老板、采购、后厨、新店、连锁品牌问题", count: "56条", updated: "今日更新" },
-    { title: "案例素材库", detail: "门店案例、爆品案例、失败案例和套餐拆解", count: "32组", updated: "本周更新" },
-    { title: "金句表达库", detail: "标题、开头、转化和评论区可复用表达", count: "48句", updated: "本周更新" },
-    { title: "产品资料库", detail: "毛肚、牛羊肉、丸滑、小吃甜品、锅底蘸料", count: "7类", updated: "持续维护" },
-    { title: "脚本模板库", detail: "痛点型、避坑型、清单型、案例型、种草型", count: "18套", updated: "持续维护" },
-    { title: "历史作品库", detail: "播放、互动、线索和复盘结论", count: "42条", updated: "发布后更新" },
-  ];
-  const weeklyPlan = [
-    { day: "周一", theme: "行业热点 / 经营判断", output: "餐饮寒冬下的高复购食材判断" },
-    { day: "周二", theme: "产品选品指南", output: "毛肚、鸭肠、丸滑的门店价值对比" },
-    { day: "周三", theme: "火锅店痛点解决", output: "菜单越厚利润越低的结构诊断" },
-    { day: "周四", theme: "案例拆解", output: "高客单套餐如何不增加后厨压力" },
-    { day: "周五", theme: "节日借势 / 套餐建议", output: "节前备货清单和小吃甜品加购" },
-  ];
   const reviewCards = [
-    { title: "高互动内容", metric: topViews ? formatNumber(topViews.publishData.views) : "18,400", detail: topViews?.title ?? "鸭肠、毛肚、黄喉，谁更适合做门店招牌" },
+    { title: "高互动内容", metric: topViews ? formatNumber(topViews.publishData.views) : "0", detail: topViews?.title ?? industryProfile.dashboard.heroTopic.title },
     { title: "可二次改编内容", metric: "系列化", detail: seriesCandidate?.title ?? "菜单结构类内容适合拆成系列" },
     { title: "低表现内容", metric: "待优化", detail: "产品卖点不清时，先补门店场景和采购理由" },
-    { title: "下周推荐方向", metric: "成本控制", detail: "围绕高复购食材、低损耗组合、节气备货继续推进" },
+    { title: "下周推荐方向", metric: "成本控制", detail: industryProfile.dashboard.weeklyPlan[0]?.output ?? "围绕高复购食材、低损耗组合、节气备货继续推进" },
   ];
 
   const applyQuickTopic = (topic: string) => {
     setDashboardFocus(topic);
-    runDashboardAi(`AI 今日决策：${topic}`, {
+    runDashboardAi(`${industryProfile.label} AI 今日决策：${topic}`, {
+      industry: activeIndustry,
       mode: "dashboardDecision",
       query: topic,
-      targetUser: data.positioning.audience,
+      targetUser: industryProfile.audience,
       column: "全部栏目",
       freshness: "oneMonth",
       notes: JSON.stringify({
-        positioning: data.positioning,
+        positioning: {
+          ...data.positioning,
+          name: industryProfile.name,
+          audience: industryProfile.audience,
+          promise: industryProfile.promise,
+          style: industryProfile.style,
+          conversionGoal: industryProfile.conversionGoal,
+        },
+        industryProfile,
         quickTopic: topic,
         hotspots,
         priorityTopics,
@@ -685,12 +812,9 @@ function Dashboard({
     <section className="command-dashboard">
       <section className="command-hero">
         <div className="command-hero-copy">
-          <span className="command-kicker">火锅食材 B 端内容决策</span>
-          <h2>今天先看机会，再决定做什么内容</h2>
-          <p>
-            围绕火锅食材供应链账号，结合 B 端用户痛点、节气热点、行业趋势和产品资料，
-            生成更适合发布的选题、脚本和内容方向。
-          </p>
+          <span className="command-kicker">{industryProfile.dashboard.kicker}</span>
+          <h2>{industryProfile.dashboard.heroTitle}</h2>
+          <p>{industryProfile.dashboard.heroDescription}</p>
           <div className="command-actions">
             <button className="command-button primary" disabled={Boolean(dashboardAiLoading)} onClick={requestTodayDecision} type="button">
               {dashboardAiLoading ? <Loader2 className="spin-icon" size={18} aria-hidden="true" /> : <Sparkles size={18} aria-hidden="true" />}
@@ -707,12 +831,12 @@ function Dashboard({
 
         <article className="today-topic-card">
           <span className="command-tag red">今日推荐选题</span>
-          <h3>餐饮寒冬下，火锅店应该保留哪些高复购食材？</h3>
+          <h3>{industryProfile.dashboard.heroTopic.title}</h3>
           <dl>
-            <div><dt>目标用户</dt><dd>火锅店老板</dd></div>
-            <div><dt>内容类型</dt><dd>经营痛点</dd></div>
-            <div><dt>产品关联</dt><dd>毛肚、鸭肠、丸滑、小吃甜品</dd></div>
-            <div><dt>推荐平台</dt><dd>抖音 / 视频号</dd></div>
+            <div><dt>目标用户</dt><dd>{industryProfile.dashboard.heroTopic.targetUser}</dd></div>
+            <div><dt>内容类型</dt><dd>{industryProfile.dashboard.heroTopic.contentType}</dd></div>
+            <div><dt>产品关联</dt><dd>{industryProfile.dashboard.heroTopic.productAssociation}</dd></div>
+            <div><dt>推荐平台</dt><dd>{industryProfile.dashboard.heroTopic.platform}</dd></div>
           </dl>
           <div className="command-actions compact">
             <button className="command-button primary" onClick={() => setActiveView("production")} type="button">生成脚本</button>
@@ -722,7 +846,7 @@ function Dashboard({
       </section>
 
       <section className="command-stat-grid">
-        {dashboardStats.map((stat) => (
+        {industryProfile.dashboard.stats.map((stat) => (
           <article className="command-stat-card" key={stat.label}>
             <span>{stat.label}</span>
             <strong>{stat.value}</strong>
@@ -735,7 +859,7 @@ function Dashboard({
         <div className="command-section-head">
           <div>
             <span className="command-kicker">Tavily + DeepSeek</span>
-            <h2>AI 今日决策</h2>
+            <h2>{industryProfile.label} AI 今日决策</h2>
             <p>调用 Tavily + DeepSeek，基于账号定位、热点、选题和素材生成建议。</p>
           </div>
           <button className="command-button primary" disabled={Boolean(dashboardAiLoading)} onClick={requestTodayDecision} type="button">
@@ -743,14 +867,14 @@ function Dashboard({
           </button>
         </div>
         <div className="command-chip-row">
-          {quickTopics.map((topic) => (
+          {industryProfile.quickTopics.map((topic) => (
             <button className="command-chip" disabled={Boolean(dashboardAiLoading)} key={topic} onClick={() => applyQuickTopic(topic)} type="button">
               {topic}
             </button>
           ))}
         </div>
         {dashboardAiError ? <div className="research-error">{dashboardAiError}</div> : null}
-        {dashboardAi ? <DashboardAiResult state={dashboardAi} /> : <StaticDecisionPreview />}
+        {dashboardAi ? <DashboardAiResult state={dashboardAi} /> : <StaticDecisionPreview industryProfile={industryProfile} />}
       </section>
 
       <section className="command-panel">
@@ -762,7 +886,7 @@ function Dashboard({
           </div>
         </div>
         <div className="workflow-grid">
-          {workflowSteps.map((step) => (
+          {industryProfile.dashboard.workflowSteps.map((step) => (
             <article className="workflow-card" key={step.title}>
               <b>{step.icon}</b>
               <h3>{step.title}</h3>
@@ -781,7 +905,7 @@ function Dashboard({
             </div>
           </div>
           <div className="asset-grid">
-            {assetCards.map((asset) => (
+            {industryProfile.dashboard.assetCards.map((asset) => (
               <article className="asset-card" key={asset.title}>
                 <span className="command-tag green">{asset.count}</span>
                 <h3>{asset.title}</h3>
@@ -803,7 +927,7 @@ function Dashboard({
             </div>
           </div>
           <div className="weekly-list">
-            {weeklyPlan.map((item) => (
+            {industryProfile.dashboard.weeklyPlan.map((item) => (
               <article key={item.day}>
                 <span>{item.day}</span>
                 <h3>{item.theme}</h3>
@@ -836,12 +960,19 @@ function Dashboard({
   );
 }
 
-function StaticDecisionPreview() {
-  const ideas = [
-    { title: "火锅店淡季先别打折，先重做这 3 类食材组合", user: "火锅店老板", angle: "成本控制", product: "丸滑、小吃甜品、外卖组合", script: "痛点型口播" },
-    { title: "冬至前火锅店该提前备哪些高频食材", user: "后厨负责人", angle: "节气备货", product: "牛羊肉、锅底、小料", script: "清单型短视频" },
-    { title: "为什么采购只看单价，最后反而更贵", user: "餐饮采购负责人", angle: "采购避坑", product: "毛肚、鸭肠、规格标准", script: "避坑型脚本" },
-  ];
+function StaticDecisionPreview({ industryProfile }: { industryProfile: IndustryProfile }) {
+  const ideas =
+    industryProfile.id === "bbq"
+      ? [
+          { title: "烧烤店淡季先别降价，先重做这 3 类串品组合", user: "烧烤店老板", angle: "成本控制", product: "牛肉串、掌中宝、夜宵组合", script: "痛点型口播" },
+          { title: "夏季夜宵前烧烤店该提前备哪些高频串品", user: "后厨负责人", angle: "节气备货", product: "牛羊肉串、鸡翅、蘸料", script: "清单型短视频" },
+          { title: "为什么采购只看单价，最后反而更贵", user: "餐饮采购负责人", angle: "采购避坑", product: "串品、规格标准、稳定供货", script: "避坑型脚本" },
+        ]
+      : [
+          { title: "火锅店淡季先别打折，先重做这 3 类食材组合", user: "火锅店老板", angle: "成本控制", product: "丸滑、小吃甜品、外卖组合", script: "痛点型口播" },
+          { title: "冬至前火锅店该提前备哪些高频食材", user: "后厨负责人", angle: "节气备货", product: "牛羊肉、锅底、小料", script: "清单型短视频" },
+          { title: "为什么采购只看单价，最后反而更贵", user: "餐饮采购负责人", angle: "采购避坑", product: "毛肚、鸭肠、规格标准", script: "避坑型脚本" },
+        ];
 
   return (
     <div className="static-decision-grid">
@@ -946,6 +1077,7 @@ function TopicCandidatePanel({
             <article className="candidate-card" key={candidate.id}>
               <div className="candidate-card-head">
                 <span>{candidate.topicCategory}</span>
+                {candidate.industry ? <span className="tag">{candidate.industry === "bbq" ? "烧烤" : "火锅"}</span> : null}
                 <b>{candidate.recommendationScore}/100</b>
               </div>
               <label>
@@ -1005,6 +1137,8 @@ function TopicCandidatePanel({
 }
 
 function TopicsView({
+  activeIndustry,
+  industryProfile,
   column,
   filteredTopics,
   onStartProduction,
@@ -1019,12 +1153,14 @@ function TopicsView({
   contentStatus,
   sourceFilter,
 }: {
+  activeIndustry: IndustryId;
+  industryProfile: IndustryProfile;
   column: string;
   filteredTopics: Topic[];
   onStartProduction: (topicId: string) => void;
   onTopicConfirmed: (topic: Topic) => void;
   query: string;
-  selectedTopic: Topic;
+  selectedTopic: Topic | undefined;
   setColumn: (value: string) => void;
   setContentStatus: (value: ContentStatusFilter) => void;
   setQuery: (value: string) => void;
@@ -1033,7 +1169,9 @@ function TopicsView({
   contentStatus: ContentStatusFilter;
   sourceFilter: SourceFilter;
 }) {
-  const [candidateForm, setCandidateForm] = useState<TopicCandidateGenerateRequest>(defaultTopicCandidateForm);
+  const [candidateForm, setCandidateForm] = useState<TopicCandidateGenerateRequest>(() =>
+    buildDefaultTopicCandidateForm(industryProfile),
+  );
   const [candidateResult, setCandidateResult] = useState<TopicCandidateGenerateResult | null>(null);
   const [candidateLoading, setCandidateLoading] = useState(false);
   const [candidateError, setCandidateError] = useState("");
@@ -1042,6 +1180,13 @@ function TopicsView({
   const [refreshLoading, setRefreshLoading] = useState(false);
   const [refreshError, setRefreshError] = useState("");
   const [refreshMessage, setRefreshMessage] = useState("");
+  const detailTopic = selectedTopic ?? filteredTopics[0] ?? filteredTopics[0];
+
+  useEffect(() => {
+    setCandidateForm(buildDefaultTopicCandidateForm(industryProfile));
+    setCandidateResult(null);
+    setRefreshResult(null);
+  }, [industryProfile]);
 
   const updateCandidateForm = (field: keyof TopicCandidateGenerateRequest, value: string | number) => {
     setCandidateForm((current) => ({ ...current, [field]: value }));
@@ -1079,6 +1224,7 @@ function TopicsView({
     setRefreshMessage("");
 
     const payload: TopicRefreshRequest = {
+      industry: activeIndustry,
       query,
       column,
       sourceFilter,
@@ -1200,7 +1346,7 @@ function TopicsView({
           <div className="topics-toolbar">
             <div className="topics-toolbar-copy">
               <strong>联网重调研</strong>
-              <span>按当前筛选条件调用 Tavily + DeepSeek，生成待确认的新候选。</span>
+              <span>{industryProfile.label}行业下，按当前筛选条件调用 Tavily + DeepSeek，生成待确认的新候选。</span>
             </div>
             <div className="topics-toolbar-actions">
               <button className="icon-button filter-refresh-button" disabled={refreshLoading} onClick={refreshTopicsFromFilters} type="button">
@@ -1223,9 +1369,9 @@ function TopicsView({
               <span>内容栏目</span>
               <select aria-label="筛选内容栏目" onChange={(event) => setColumn(event.target.value)} value={column}>
                 <option value="全部栏目">全部栏目</option>
-                {columnFilterOptions.map((item) => (
-                  <option key={item.value} value={item.value}>
-                    {item.label}
+                {industryProfile.columns.map((item) => (
+                  <option key={item} value={item}>
+                    {getColumnLabel(item)}
                   </option>
                 ))}
               </select>
@@ -1261,7 +1407,7 @@ function TopicsView({
           {refreshMessage ? <div className="topic-confirm-message">{refreshMessage}</div> : null}
 
           <TopicCandidatePanel
-            emptyText="当前筛选条件下没有生成新的候选选题，可以换个关键词或栏目再试。"
+            emptyText={`当前 ${industryProfile.label} 筛选条件下没有生成新的候选选题，可以换个关键词或栏目再试。`}
             onConfirm={(candidate) => confirmCandidate(candidate, refreshResult?.request.column ?? candidateForm.column, "refresh")}
             onUpdate={updateRefreshCandidate}
             result={refreshResult}
@@ -1271,7 +1417,7 @@ function TopicsView({
           <div className="topic-list" aria-live="polite">
             {filteredTopics.map((topic) => (
               <article
-                className={`topic-row ${selectedTopic.id === topic.id ? "active" : ""}`}
+                className={`topic-row ${detailTopic?.id === topic.id ? "active" : ""}`}
                 key={topic.id}
               >
                 <button className="topic-row-main" onClick={() => setSelectedTopicId(topic.id)} type="button">
@@ -1293,56 +1439,63 @@ function TopicsView({
         </div>
 
         <article className="detail-panel">
+          {!detailTopic ? (
+            <div className="empty-text">当前行业下还没有可展示的选题，请先生成或确认入池一个选题。</div>
+          ) : (
+            <>
           <div className="detail-header">
             <div className="tag-row">
-              <span className="tag">{getColumnLabel(selectedTopic.column)}</span>
-              <span className="tag">{getSourceLabel(selectedTopic)}</span>
-              <span className="tag">{getContentStatusLabel(selectedTopic)}</span>
-              {selectedTopic.aiGenerated ? <span className="tag">AI生成</span> : null}
+              <span className="tag">{getColumnLabel(detailTopic.column)}</span>
+              <span className="tag">{getSourceLabel(detailTopic)}</span>
+              <span className="tag">{getContentStatusLabel(detailTopic)}</span>
+              <span className="tag">{industryProfile.label}</span>
+              {detailTopic.aiGenerated ? <span className="tag">AI生成</span> : null}
             </div>
-            <h2>{selectedTopic.title}</h2>
-            <p>{selectedTopic.coreView}</p>
-            <button className="icon-button" onClick={() => onStartProduction(selectedTopic.id)} type="button">
+            <h2>{detailTopic.title}</h2>
+            <p>{detailTopic.coreView}</p>
+            <button className="icon-button" onClick={() => onStartProduction(detailTopic.id)} type="button">
               <Clapperboard size={18} aria-hidden="true" />
               <span>进入内容生产</span>
             </button>
           </div>
           <dl className="detail-grid">
-            <Detail label="内容栏目" value={getColumnLabel(selectedTopic.column)} />
-            <Detail label="选题来源" value={getSourceLabel(selectedTopic)} />
-            <Detail label="内容状态" value={getContentStatusLabel(selectedTopic)} />
-            <Detail label="目标用户" value={selectedTopic.targetUser} />
-            <Detail label="适合发布平台" value={selectedTopic.platform} />
-            <Detail label="建议内容形式" value={selectedTopic.format} />
-            <Detail label="用户痛点" value={selectedTopic.painPoint} />
-            <Detail label="业务关联" value={selectedTopic.businessLink} />
-            <Detail label="热点来源" value={selectedTopic.hotSource} />
-            <Detail label="内容角度" value={selectedTopic.angle} />
-            <Detail label="推荐分数" value={selectedTopic.recommendationScore ? `${selectedTopic.recommendationScore}/100` : "手动选题"} />
-            <Detail label="复盘结论" value={selectedTopic.review} />
+            <Detail label="内容栏目" value={getColumnLabel(detailTopic.column)} />
+            <Detail label="选题来源" value={getSourceLabel(detailTopic)} />
+            <Detail label="内容状态" value={getContentStatusLabel(detailTopic)} />
+            <Detail label="目标用户" value={detailTopic.targetUser} />
+            <Detail label="适合发布平台" value={detailTopic.platform} />
+            <Detail label="建议内容形式" value={detailTopic.format} />
+            <Detail label="用户痛点" value={detailTopic.painPoint} />
+            <Detail label="业务关联" value={detailTopic.businessLink} />
+            <Detail label="热点来源" value={detailTopic.hotSource} />
+            <Detail label="内容角度" value={detailTopic.angle} />
+            <Detail label="推荐分数" value={detailTopic.recommendationScore ? `${detailTopic.recommendationScore}/100` : "手动选题"} />
+            <Detail label="复盘结论" value={detailTopic.review} />
           </dl>
-          {selectedTopic.sourceUrls?.length ? (
+          {detailTopic.sourceUrls?.length ? (
             <div className="topic-source-links">
-              {selectedTopic.sourceUrls.map((url) => (
+              {detailTopic.sourceUrls.map((url) => (
                 <a href={url} key={url} rel="noreferrer" target="_blank">
                   来源 <ExternalLink size={14} aria-hidden="true" />
                 </a>
               ))}
             </div>
           ) : null}
-          {selectedTopic.riskNotes?.length ? (
+          {detailTopic.riskNotes?.length ? (
             <ul className="topic-risk-list">
-              {selectedTopic.riskNotes.map((risk) => (
+              {detailTopic.riskNotes.map((risk) => (
                 <li key={risk}>{risk}</li>
               ))}
             </ul>
           ) : null}
           <div className="publish-strip">
-            <Metric label="播放" value={formatNumber(selectedTopic.publishData.views)} detail="views" />
-            <Metric label="点赞" value={formatNumber(selectedTopic.publishData.likes)} detail="likes" />
-            <Metric label="收藏" value={formatNumber(selectedTopic.publishData.saves)} detail="saves" />
-            <Metric label="转化" value={formatNumber(selectedTopic.publishData.conversions)} detail="leads" />
+            <Metric label="播放" value={formatNumber(detailTopic.publishData.views)} detail="views" />
+            <Metric label="点赞" value={formatNumber(detailTopic.publishData.likes)} detail="likes" />
+            <Metric label="收藏" value={formatNumber(detailTopic.publishData.saves)} detail="saves" />
+            <Metric label="转化" value={formatNumber(detailTopic.publishData.conversions)} detail="leads" />
           </div>
+            </>
+          )}
         </article>
       </div>
 
@@ -1369,7 +1522,7 @@ function TopicsView({
             <span>调研关键词</span>
             <input
               onChange={(event) => updateCandidateForm("query", event.target.value)}
-              placeholder="例如：端午火锅备货、夏季小吃爆品"
+              placeholder={adaptIndustryText(industryProfile.defaultTopicCandidate.query, industryProfile)}
               required
               value={candidateForm.query}
             />
@@ -1377,10 +1530,12 @@ function TopicsView({
           <label>
             <span>适配栏目</span>
             <select onChange={(event) => updateCandidateForm("column", event.target.value)} value={candidateForm.column}>
-              {data.columns.map((item) => (
-                <option key={item}>{item}</option>
+              {industryProfile.columns.map((item) => (
+                <option key={item} value={item}>
+                  {getColumnLabel(item)}
+                </option>
               ))}
-            </select>
+              </select>
           </label>
           <label>
             <span>目标用户</span>
@@ -1442,6 +1597,8 @@ function TopicsView({
 }
 
 function ProductionView({
+  activeIndustry,
+  industryProfile,
   onProductionSaved,
   productionTopicId,
   productionTopicIds,
@@ -1450,6 +1607,8 @@ function ProductionView({
   setProductionTopicId,
   topics,
 }: {
+  activeIndustry: IndustryId;
+  industryProfile: IndustryProfile;
   onProductionSaved: (production: ContentProduction, review: ReviewRecord | null, topic: Topic | null) => void;
   productionTopicId: string;
   productionTopicIds: string[];
@@ -1459,11 +1618,12 @@ function ProductionView({
   topics: Topic[];
 }) {
   const visibleTopics = productionTopicIds
-    .map((topicId) => topics.find((topic) => topic.id === topicId))
+    .map((topicId) => topics.find((topic) => topic.id === topicId && getTopicIndustry(topic) === activeIndustry))
     .filter((topic): topic is Topic => Boolean(topic));
   const selectedTopic = visibleTopics.find((topic) => topic.id === productionTopicId) ?? visibleTopics[0];
+  const selectedTopicIdValue = selectedTopic?.id ?? "";
   const [production, setProduction] = useState<ContentProduction>(() =>
-    productions.find((item) => item.topicId === selectedTopic?.id) ?? emptyProduction(selectedTopic?.id ?? ""),
+    productions.find((item) => item.topicId === selectedTopicIdValue) ?? emptyProduction(selectedTopicIdValue, activeIndustry),
   );
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -1473,14 +1633,14 @@ function ProductionView({
     if (!selectedTopic) {
       return;
     }
-    setProduction(productions.find((item) => item.topicId === selectedTopic.id) ?? emptyProduction(selectedTopic.id));
+    setProduction(productions.find((item) => item.topicId === selectedTopic.id) ?? emptyProduction(selectedTopic.id, activeIndustry));
     setMessage("");
     setError("");
-  }, [productions, selectedTopic]);
+  }, [activeIndustry, productions, selectedTopic]);
 
   const selectedTemplate =
-    data.scriptTemplates.find((template) => template.id === production.selectedTemplateId) ??
-    data.scriptTemplates[0];
+    (data.scriptTemplates as ScriptTemplate[]).find((template) => template.id === production.selectedTemplateId) ??
+    (data.scriptTemplates as ScriptTemplate[])[0];
 
   const patchProduction = (patch: Partial<ContentProduction>) => {
     setProduction((current) => ({ ...current, ...patch }));
@@ -1522,6 +1682,9 @@ function ProductionView({
   };
 
   const saveProduction = async (nextProduction = production) => {
+    if (!selectedTopic) {
+      return;
+    }
     setLoadingAction("save");
     setError("");
     setMessage("");
@@ -1553,6 +1716,9 @@ function ProductionView({
   };
 
   const runProductionResearch = async () => {
+    if (!selectedTopic) {
+      return;
+    }
     setLoadingAction("research");
     setError("");
     setMessage("");
@@ -1561,7 +1727,7 @@ function ProductionView({
       const response = await fetch("/api/production/research", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ topicId: selectedTopic.id, notes: production.researchNotes }),
+        body: JSON.stringify({ topicId: selectedTopic.id, notes: production.researchNotes, industry: activeIndustry }),
       });
       const payload = await parseResearchResponse(response);
 
@@ -1588,6 +1754,9 @@ function ProductionView({
   };
 
   const generateScript = async () => {
+    if (!selectedTopic) {
+      return;
+    }
     setLoadingAction("script");
     setError("");
     setMessage("");
@@ -1596,7 +1765,7 @@ function ProductionView({
       const response = await fetch("/api/production/generate-script", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(production),
+        body: JSON.stringify({ ...production, industry: activeIndustry }),
       });
       const payload = await parseResearchResponse(response);
 
@@ -1614,6 +1783,9 @@ function ProductionView({
   };
 
   const generatePublish = async () => {
+    if (!selectedTopic) {
+      return;
+    }
     setLoadingAction("publish");
     setError("");
     setMessage("");
@@ -1622,7 +1794,7 @@ function ProductionView({
       const response = await fetch("/api/production/generate-publish", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(production),
+        body: JSON.stringify({ ...production, industry: activeIndustry }),
       });
       const payload = await parseResearchResponse(response);
 
@@ -1647,7 +1819,7 @@ function ProductionView({
         <div className="section-heading">
           <div>
             <h2>内容生产流程</h2>
-            <span>从选题到复盘</span>
+            <span>{industryProfile.label}内容生产流程</span>
           </div>
         </div>
         <div className="production-topic-picker">
@@ -1713,14 +1885,14 @@ function ProductionView({
       <main className="panel production-main">
         {!selectedTopic ? (
           <section className="production-empty">
-            <h2>先从选题池选择一个选题</h2>
+            <h2>先从{industryProfile.label}选题池选择一个选题</h2>
             <p>内容生产台会围绕一个选题推进调研、脚本、素材、发布和复盘。你也可以先清理当前列表，再从选题池重新加入需要推进的选题。</p>
           </section>
         ) : (
           <>
             <div className="production-main-head">
               <div>
-                <p className="eyebrow">{getColumnLabel(selectedTopic.column)} / {getSourceLabel(selectedTopic)}</p>
+                <p className="eyebrow">{getColumnLabel(selectedTopic.column)} / {getSourceLabel(selectedTopic)} / {industryProfile.label}</p>
                 <h2>{selectedTopic.title}</h2>
                 <p>{selectedTopic.coreView}</p>
               </div>
@@ -1769,7 +1941,9 @@ function ProductionView({
             {production.currentStep === "template" ? (
           <div className="production-section">
             <div className="template-choice-grid">
-              {(data.scriptTemplates as ScriptTemplate[]).map((template) => (
+              {(data.scriptTemplates as ScriptTemplate[])
+                .map((template) => ({ ...template, name: adaptIndustryText(template.name, industryProfile), scenario: adaptIndustryText(template.scenario, industryProfile), opener: adaptIndustryText(template.opener, industryProfile) }))
+                .map((template) => (
                 <button
                   className={`template-choice ${production.selectedTemplateId === template.id ? "active" : ""}`}
                   key={template.id}
@@ -1782,7 +1956,7 @@ function ProductionView({
                 </button>
               ))}
             </div>
-            <blockquote>{selectedTemplate.opener}</blockquote>
+            <blockquote>{adaptIndustryText(selectedTemplate.opener, industryProfile)}</blockquote>
           </div>
             ) : null}
 
@@ -1811,21 +1985,21 @@ function ProductionView({
               <MaterialChecklist
                 field="productImages"
                 label="产品图"
-                items={data.materials.find((item) => item.title === "产品资料")?.items ?? []}
+                items={(data.materials.find((item) => item.title === "产品资料")?.items ?? []).map((item) => adaptIndustryText(item, industryProfile))}
                 production={production}
                 updateMaterialBucket={updateMaterialBucket}
               />
               <MaterialChecklist
                 field="storeScenes"
                 label="门店场景"
-                items={data.materials.find((item) => item.title === "案例素材")?.items ?? []}
+                items={(data.materials.find((item) => item.title === "案例素材")?.items ?? []).map((item) => adaptIndustryText(item, industryProfile))}
                 production={production}
                 updateMaterialBucket={updateMaterialBucket}
               />
               <MaterialChecklist
                 field="foodShots"
                 label="食材画面"
-                items={["产品近景", "下锅画面", "出餐画面", "后厨备货", "套餐组合"]}
+                items={industryProfile.id === "bbq" ? ["串品近景", "烤制画面", "出餐画面", "后厨备货", "套餐组合"] : ["产品近景", "下锅画面", "出餐画面", "后厨备货", "套餐组合"]}
                 production={production}
                 updateMaterialBucket={updateMaterialBucket}
               />
@@ -1978,16 +2152,23 @@ function MaterialChecklist({
   );
 }
 
-function ResearchView() {
-  const [form, setForm] = useState<ResearchRequest>(defaultResearchForm);
+function ResearchView({
+  activeIndustry,
+  industryProfile,
+}: {
+  activeIndustry: IndustryId;
+  industryProfile: IndustryProfile;
+}) {
+  const [form, setForm] = useState<ResearchRequest>(() => buildDefaultResearchForm(industryProfile));
   const [history, setHistory] = useState<ResearchResult[]>([]);
   const [activeResult, setActiveResult] = useState<ResearchResult | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const historyStorageKey = storageKeyForIndustry(researchHistoryKey, activeIndustry);
 
   useEffect(() => {
     try {
-      const saved = window.localStorage.getItem(researchHistoryKey);
+      const saved = window.localStorage.getItem(historyStorageKey);
       if (!saved) {
         return;
       }
@@ -1997,13 +2178,18 @@ function ResearchView() {
         setActiveResult(parsed[0] ?? null);
       }
     } catch {
-      window.localStorage.removeItem(researchHistoryKey);
+      window.localStorage.removeItem(historyStorageKey);
     }
-  }, []);
+  }, [historyStorageKey]);
+
+  useEffect(() => {
+    setForm(buildDefaultResearchForm(industryProfile));
+    setActiveResult(null);
+  }, [industryProfile]);
 
   const saveHistory = (items: ResearchResult[]) => {
     setHistory(items);
-    window.localStorage.setItem(researchHistoryKey, JSON.stringify(items));
+    window.localStorage.setItem(historyStorageKey, JSON.stringify(items));
   };
 
   const updateForm = (field: keyof ResearchRequest, value: string) => {
@@ -2019,7 +2205,7 @@ function ResearchView() {
       const response = await fetch("/api/research", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify({ ...form, industry: activeIndustry }),
       });
       const payload = await parseResearchResponse(response);
 
@@ -2041,7 +2227,7 @@ function ResearchView() {
   const clearHistory = () => {
     setHistory([]);
     setActiveResult(null);
-    window.localStorage.removeItem(researchHistoryKey);
+    window.localStorage.removeItem(historyStorageKey);
   };
 
   return (
@@ -2050,7 +2236,7 @@ function ResearchView() {
         <div className="section-heading">
           <div>
             <h2>联网调研助手</h2>
-            <span>搜索实时信息，再生成 B 端内容判断</span>
+            <span>{industryProfile.label}行业下搜索实时信息，再生成 B 端内容判断</span>
           </div>
           <button className="icon-button" disabled={isLoading} type="submit">
             {isLoading ? <Loader2 className="spin-icon" size={18} aria-hidden="true" /> : <Search size={18} aria-hidden="true" />}
@@ -2062,7 +2248,7 @@ function ResearchView() {
           <span>调研主题</span>
           <input
             onChange={(event) => updateForm("query", event.target.value)}
-            placeholder="例如：夏季火锅淡季拉客"
+            placeholder={industryProfile.defaultResearch.query}
             required
             value={form.query}
           />
@@ -2073,15 +2259,17 @@ function ResearchView() {
             <span>目标用户</span>
             <input
               onChange={(event) => updateForm("targetUser", event.target.value)}
-              placeholder="例如：火锅店老板"
+              placeholder={industryProfile.defaultResearch.targetUser}
               value={form.targetUser}
             />
           </label>
           <label>
             <span>适配栏目</span>
             <select onChange={(event) => updateForm("column", event.target.value)} value={form.column}>
-              {data.columns.map((item) => (
-                <option key={item}>{item}</option>
+              {industryProfile.columns.map((item) => (
+                <option key={item} value={item}>
+                  {getColumnLabel(item)}
+                </option>
               ))}
             </select>
           </label>
@@ -2242,22 +2430,30 @@ function ResearchResultPanel({ result }: { result: ResearchResult | null }) {
   );
 }
 
-function ScriptsView() {
+function ScriptsView({
+  activeIndustry,
+  industryProfile,
+}: {
+  activeIndustry: IndustryId;
+  industryProfile: IndustryProfile;
+}) {
   return (
     <section className="template-grid">
-      {data.scriptTemplates.map((template) => (
+      {(data.scriptTemplates as ScriptTemplate[])
+        .filter((template) => !template.industry || template.industry === activeIndustry)
+        .map((template) => (
         <article className="panel template-card" key={template.id}>
           <div className="section-heading">
-            <h2>{template.name}</h2>
+            <h2>{adaptIndustryText(template.name, industryProfile)}</h2>
             <span>{template.platforms.join(" / ")}</span>
           </div>
-          <p>{template.scenario}</p>
+          <p>{adaptIndustryText(template.scenario, industryProfile)}</p>
           <ol>
             {template.steps.map((step) => (
-              <li key={step}>{step}</li>
+              <li key={step}>{adaptIndustryText(step, industryProfile)}</li>
             ))}
           </ol>
-          <blockquote>{template.opener}</blockquote>
+          <blockquote>{adaptIndustryText(template.opener, industryProfile)}</blockquote>
         </article>
       ))}
     </section>
@@ -2265,27 +2461,33 @@ function ScriptsView() {
 }
 
 function PromptsView({
+  activeIndustry,
   copiedPromptId,
   copyPrompt,
+  industryProfile,
 }: {
+  activeIndustry: IndustryId;
   copiedPromptId: string;
-  copyPrompt: (prompt: PromptTemplate) => void;
+  copyPrompt: (prompt: PromptTemplate, profile: IndustryProfile) => void;
+  industryProfile: IndustryProfile;
 }) {
   return (
     <section className="prompt-list">
-      {data.prompts.map((prompt) => (
+      {(data.prompts as Array<PromptTemplate & { industry?: IndustryId }>)
+        .filter((prompt) => !prompt.industry || prompt.industry === activeIndustry)
+        .map((prompt) => (
         <article className="panel prompt-card" key={prompt.id}>
           <div className="section-heading">
             <div>
               <h2>{prompt.purpose}</h2>
               <span>适用对象：{prompt.audience}</span>
             </div>
-            <button className="icon-button" onClick={() => copyPrompt(prompt)} title="复制提示词" type="button">
+            <button className="icon-button" onClick={() => copyPrompt(prompt, industryProfile)} title="复制提示词" type="button">
               <Clipboard size={18} aria-hidden="true" />
               <span>{copiedPromptId === prompt.id ? "已复制" : "复制"}</span>
             </button>
           </div>
-          <p>{prompt.body}</p>
+          <p>{adaptIndustryText(prompt.body, industryProfile)}</p>
           <div className="chip-row">
             {prompt.outputFields.map((field) => (
               <span className="chip" key={field}>
@@ -2299,19 +2501,27 @@ function PromptsView({
   );
 }
 
-function MaterialsView() {
+function MaterialsView({
+  activeIndustry,
+  industryProfile,
+}: {
+  activeIndustry: IndustryId;
+  industryProfile: IndustryProfile;
+}) {
   return (
     <section className="template-grid">
-      {data.materials.map((section) => (
+      {(data.materials as Array<MaterialSection & { industry?: IndustryId }>)
+        .filter((section) => !section.industry || section.industry === activeIndustry)
+        .map((section) => (
         <article className="panel material-card" key={section.id}>
           <div className="section-heading">
-            <h2>{section.title}</h2>
+            <h2>{adaptIndustryText(section.title, industryProfile)}</h2>
             <BookOpenText size={18} aria-hidden="true" />
           </div>
-          <p>{section.description}</p>
+          <p>{adaptIndustryText(section.description, industryProfile)}</p>
           <ul>
             {section.items.map((item) => (
-              <li key={item}>{item}</li>
+              <li key={item}>{adaptIndustryText(item, industryProfile)}</li>
             ))}
           </ul>
         </article>
@@ -2320,11 +2530,21 @@ function MaterialsView() {
   );
 }
 
-function ReviewsView({ reviews }: { reviews: ReviewRecord[] }) {
+function ReviewsView({
+  activeIndustry,
+  industryProfile,
+  reviews,
+}: {
+  activeIndustry: IndustryId;
+  industryProfile: IndustryProfile;
+  reviews: ReviewRecord[];
+}) {
+  const visibleReviews = reviews.filter((review) => getReviewIndustry(review) === activeIndustry);
+
   return (
     <section className="panel table-panel">
       <div className="section-heading">
-        <h2>发布数据复盘</h2>
+        <h2>{industryProfile.label}发布数据复盘</h2>
         <span>播放、互动、转化和复盘结论</span>
       </div>
       <div className="table-scroll">
@@ -2343,7 +2563,7 @@ function ReviewsView({ reviews }: { reviews: ReviewRecord[] }) {
             </tr>
           </thead>
           <tbody>
-            {reviews.map((record) => (
+            {visibleReviews.map((record) => (
               <tr key={record.id}>
                 <td>{record.topicTitle}</td>
                 <td>{record.publishDate}</td>

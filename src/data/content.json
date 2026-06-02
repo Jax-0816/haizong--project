@@ -12,13 +12,184 @@
     ],
     "conversionGoal": "建立供应链专业信任，沉淀采购线索和产品咨询"
   },
+  "industryProfiles": [
+    {
+      "id": "hotpot",
+      "label": "火锅",
+      "name": "火锅食材供应链服务型账号",
+      "audience": "火锅店老板、餐饮采购负责人、后厨负责人、新开店老板和连锁品牌采购团队",
+      "promise": "帮助门店选食材、控成本、做爆品、提升出餐效率和复购能力",
+      "style": "专业、直接、重经营场景，少空泛种草，多给判断和方法",
+      "platforms": ["抖音", "视频号", "小红书", "公众号"],
+      "conversionGoal": "建立供应链专业信任，沉淀采购线索和产品咨询",
+      "columns": [
+        "火锅食材选品指南",
+        "火锅店爆品打造",
+        "火锅店成本控制",
+        "节日节气备货建议",
+        "餐饮老板避坑指南",
+        "食材供应链知识"
+      ],
+      "quickTopics": ["餐饮寒冬", "节气节日", "火锅爆品", "成本控制", "新品推荐", "门店经营"],
+      "defaultTopicCandidate": {
+        "category": "行业热点选题",
+        "query": "火锅店近期经营热点",
+        "targetUser": "火锅店老板",
+        "column": "火锅店成本控制"
+      },
+      "defaultResearch": {
+        "query": "夏季火锅淡季拉客",
+        "targetUser": "火锅店老板",
+        "column": "火锅店成本控制"
+      },
+      "dashboard": {
+        "kicker": "火锅食材 B 端内容决策",
+        "subtitle": "围绕火锅食材供应链账号，结合 B 端用户痛点、节气热点、行业趋势和产品资料，生成更适合发布的选题、脚本和内容方向。",
+        "heroTitle": "今天先看机会，再决定做什么内容",
+        "heroDescription": "围绕火锅食材供应链账号，结合 B 端用户痛点、节气热点、行业趋势和产品资料，生成更适合发布的选题、脚本和内容方向。",
+        "heroTopic": {
+          "title": "餐饮寒冬下，火锅店应该保留哪些高复购食材？",
+          "targetUser": "火锅店老板",
+          "contentType": "经营痛点",
+          "productAssociation": "毛肚、鸭肠、丸滑、小吃甜品",
+          "platform": "抖音 / 视频号"
+        },
+        "stats": [
+          { "label": "选题池总数", "value": "128", "detail": "覆盖选品、爆品、成本、供应链" },
+          { "label": "可拍摄选题", "value": "36", "detail": "已具备脚本或素材方向" },
+          { "label": "本周待发布", "value": "12", "detail": "按节气和热点排期" },
+          { "label": "高优先级热点", "value": "5", "detail": "需要 48 小时内响应" },
+          { "label": "脚本模板", "value": "18", "detail": "痛点、避坑、清单、案例、种草" },
+          { "label": "已复盘作品", "value": "42", "detail": "用于二次改编和选题回收" }
+        ],
+        "workflowSteps": [
+          { "icon": "01", "title": "账号定位", "detail": "锁定火锅食材供应链的 B 端表达边界" },
+          { "icon": "02", "title": "用户痛点", "detail": "从老板、采购、后厨负责人的真实问题出发" },
+          { "icon": "03", "title": "热点抓取", "detail": "结合节气、行业趋势和门店经营窗口" },
+          { "icon": "04", "title": "AI生成选题", "detail": "把调研依据转成可执行内容方向" },
+          { "icon": "05", "title": "人工筛选", "detail": "判断业务价值、产品关联和可拍摄性" },
+          { "icon": "06", "title": "脚本生产", "detail": "套用结构，生成口播、画面和结尾引导" },
+          { "icon": "07", "title": "发布复盘", "detail": "用数据反推下周选题和素材补充" }
+        ],
+        "assetCards": [
+          { "title": "用户痛点库", "detail": "沉淀老板、采购、后厨、新店、连锁品牌问题", "count": "56条", "updated": "今日更新" },
+          { "title": "案例素材库", "detail": "门店案例、爆品案例、失败案例和套餐拆解", "count": "32组", "updated": "本周更新" },
+          { "title": "金句表达库", "detail": "标题、开头、转化和评论区可复用表达", "count": "48句", "updated": "本周更新" },
+          { "title": "产品资料库", "detail": "毛肚、牛羊肉、丸滑、小吃甜品、锅底蘸料", "count": "7类", "updated": "持续维护" },
+          { "title": "脚本模板库", "detail": "痛点型、避坑型、清单型、案例型、种草型", "count": "18套", "updated": "持续维护" },
+          { "title": "历史作品库", "detail": "播放、互动、线索和复盘结论", "count": "42条", "updated": "发布后更新" }
+        ],
+        "weeklyPlan": [
+          { "day": "周一", "theme": "行业热点 / 经营判断", "output": "餐饮寒冬下的高复购食材判断" },
+          { "day": "周二", "theme": "产品选品指南", "output": "毛肚、鸭肠、丸滑的门店价值对比" },
+          { "day": "周三", "theme": "火锅店痛点解决", "output": "菜单越厚利润越低的结构诊断" },
+          { "day": "周四", "theme": "案例拆解", "output": "高客单套餐如何不增加后厨压力" },
+          { "day": "周五", "theme": "节日借势 / 套餐建议", "output": "节前备货清单和小吃甜品加购" }
+        ]
+      },
+      "searchKeywords": {
+        "dashboardDecision": "餐饮 火锅 供应链 经营 趋势 内容选题",
+        "hotspotMatch": "餐饮 火锅 热点 经营 供应链",
+        "topicExpand": "餐饮 火锅 爆品 选题 案例 经营",
+        "materialSuggestion": "餐饮 火锅 供应链 素材 案例 复盘",
+        "general": "餐饮 火锅 供应链 经营 内容",
+        "candidate": "餐饮 火锅 选题 供应链 内容"
+      }
+    },
+    {
+      "id": "bbq",
+      "label": "烧烤",
+      "name": "烧烤食材供应链服务型账号",
+      "audience": "烧烤店老板、夜宵档口经营者、餐饮采购负责人、后厨负责人、新开店老板和连锁品牌采购团队",
+      "promise": "帮助门店选串品、控成本、做爆品、提升出餐效率和复购能力",
+      "style": "专业、直接、重经营场景，少空泛种草，多给判断和方法",
+      "platforms": ["抖音", "视频号", "小红书", "公众号"],
+      "conversionGoal": "建立供应链专业信任，沉淀采购线索和产品咨询",
+      "columns": [
+        "烧烤食材选品指南",
+        "烧烤店爆品打造",
+        "烧烤店成本控制",
+        "节日节气备货建议",
+        "餐饮老板避坑指南",
+        "食材供应链知识"
+      ],
+      "quickTopics": ["夏季夜宵旺季", "烧烤爆品", "成本控制", "串品标准化", "节气备货", "门店经营"],
+      "defaultTopicCandidate": {
+        "category": "行业热点选题",
+        "query": "烧烤店近期经营热点",
+        "targetUser": "烧烤店老板",
+        "column": "烧烤店成本控制"
+      },
+      "defaultResearch": {
+        "query": "夏季烧烤淡季拉客",
+        "targetUser": "烧烤店老板",
+        "column": "烧烤店成本控制"
+      },
+      "dashboard": {
+        "kicker": "烧烤食材 B 端内容决策",
+        "subtitle": "围绕烧烤食材供应链账号，结合夜宵场景、旺季备货、门店经营窗口和产品资料，生成更适合发布的选题、脚本和内容方向。",
+        "heroTitle": "今天先看机会，再决定做什么内容",
+        "heroDescription": "围绕烧烤食材供应链账号，结合夜宵场景、旺季备货、门店经营窗口和产品资料，生成更适合发布的选题、脚本和内容方向。",
+        "heroTopic": {
+          "title": "夏天烧烤店应该保留哪些高复购串品？",
+          "targetUser": "烧烤店老板",
+          "contentType": "经营痛点",
+          "productAssociation": "牛肉串、羊肉串、掌中宝、鸡翅、小吃拼盘",
+          "platform": "抖音 / 视频号"
+        },
+        "stats": [
+          { "label": "选题池总数", "value": "86", "detail": "覆盖串品、爆品、成本、供应链" },
+          { "label": "可拍摄选题", "value": "24", "detail": "已具备脚本或素材方向" },
+          { "label": "本周待发布", "value": "10", "detail": "按夜宵和节气排期" },
+          { "label": "高优先级热点", "value": "4", "detail": "需要 48 小时内响应" },
+          { "label": "脚本模板", "value": "12", "detail": "痛点、避坑、清单、案例、种草" },
+          { "label": "已复盘作品", "value": "18", "detail": "用于二次改编和选题回收" }
+        ],
+        "workflowSteps": [
+          { "icon": "01", "title": "账号定位", "detail": "锁定烧烤食材供应链的 B 端表达边界" },
+          { "icon": "02", "title": "用户痛点", "detail": "从老板、采购、后厨负责人的真实问题出发" },
+          { "icon": "03", "title": "热点抓取", "detail": "结合夜宵、旺季、节气和门店经营窗口" },
+          { "icon": "04", "title": "AI生成选题", "detail": "把调研依据转成可执行内容方向" },
+          { "icon": "05", "title": "人工筛选", "detail": "判断业务价值、产品关联和可拍摄性" },
+          { "icon": "06", "title": "脚本生产", "detail": "套用结构，生成口播、画面和结尾引导" },
+          { "icon": "07", "title": "发布复盘", "detail": "用数据反推下周选题和素材补充" }
+        ],
+        "assetCards": [
+          { "title": "用户痛点库", "detail": "沉淀老板、采购、后厨、新店、连锁品牌问题", "count": "42条", "updated": "今日更新" },
+          { "title": "案例素材库", "detail": "门店案例、爆品案例、失败案例和套餐拆解", "count": "24组", "updated": "本周更新" },
+          { "title": "金句表达库", "detail": "标题、开头、转化和评论区可复用表达", "count": "36句", "updated": "本周更新" },
+          { "title": "产品资料库", "detail": "牛肉串、羊肉串、掌中宝、鸡翅、烤蔬菜、蘸料", "count": "6类", "updated": "持续维护" },
+          { "title": "脚本模板库", "detail": "痛点型、避坑型、清单型、案例型、种草型", "count": "12套", "updated": "持续维护" },
+          { "title": "历史作品库", "detail": "播放、互动、线索和复盘结论", "count": "18条", "updated": "发布后更新" }
+        ],
+        "weeklyPlan": [
+          { "day": "周一", "theme": "行业热点 / 经营判断", "output": "夏季夜宵旺季的高复购串品判断" },
+          { "day": "周二", "theme": "产品选品指南", "output": "牛肉串、羊肉串、鸡翅的门店价值对比" },
+          { "day": "周三", "theme": "烧烤店痛点解决", "output": "菜单越多利润越薄的结构诊断" },
+          { "day": "周四", "theme": "案例拆解", "output": "高客单套餐如何不增加后厨压力" },
+          { "day": "周五", "theme": "节日借势 / 套餐建议", "output": "节前备货清单和夜宵加购" }
+        ]
+      },
+      "searchKeywords": {
+        "dashboardDecision": "餐饮 烧烤 供应链 经营 趋势 内容选题",
+        "hotspotMatch": "餐饮 烧烤 热点 经营 供应链",
+        "topicExpand": "餐饮 烧烤 爆品 选题 案例 经营",
+        "materialSuggestion": "餐饮 烧烤 供应链 素材 案例 复盘",
+        "general": "餐饮 烧烤 供应链 经营 内容",
+        "candidate": "餐饮 烧烤 选题 供应链 内容"
+      }
+    }
+  ],
   "columns": [
     "火锅食材选品指南",
     "火锅店爆品打造",
     "火锅店成本控制",
     "节日节气备货建议",
     "餐饮老板避坑指南",
-    "食材供应链知识"
+    "食材供应链知识",
+    "烧烤食材选品指南",
+    "烧烤店爆品打造",
+    "烧烤店成本控制"
   ],
   "topics": [
     {
@@ -812,6 +983,121 @@
       "riskNotes": [
         "避免直接批评盒马或推测其内部流程；内容聚焦通用合规知识，不针对特定品牌"
       ]
+    },
+    {
+      "id": "topic-031",
+      "industry": "bbq",
+      "title": "夏天烧烤店客流不稳，先别急着降价，先改这3类串品组合",
+      "column": "烧烤店成本控制",
+      "topicCategory": "行业热点选题",
+      "contentType": "热点",
+      "targetUser": "烧烤店老板",
+      "painPoint": "夜宵淡旺季波动大，套餐结构乱，毛利被低价菜拖垮",
+      "businessLink": "烧烤串品结构、毛利套餐和低损耗搭配建议",
+      "hotSource": "夏季夜宵消费波动",
+      "angle": "从客流波动切入，讲清为什么不能只靠打折抢客",
+      "coreView": "烧烤店不是先降价，而是先把串品组合和出餐结构调顺",
+      "platform": "抖音 / 视频号",
+      "format": "口播 + 清单",
+      "scriptStatus": "未写",
+      "publishData": { "views": 0, "likes": 0, "saves": 0, "comments": 0, "conversions": 0 },
+      "review": "烧烤首批示例，待拍摄验证",
+      "sourceUrls": [],
+      "recommendationScore": 82,
+      "aiGenerated": true,
+      "riskNotes": ["避免把夏季淡旺季简单等同于全部烧烤店经营情况，需要结合门店客群和商圈判断"]
+    },
+    {
+      "id": "topic-032",
+      "industry": "bbq",
+      "title": "烧烤店第一张菜单，哪些串负责引流，哪些串负责赚钱",
+      "column": "烧烤食材选品指南",
+      "topicCategory": "产品种草选题",
+      "contentType": "清单",
+      "targetUser": "新开店老板",
+      "painPoint": "不知道基础串品比例，容易盲目堆SKU",
+      "businessLink": "新店基础串品包、菜单设计咨询",
+      "hotSource": "新店开业",
+      "angle": "按引流、利润、复购和补充品类拆菜单",
+      "coreView": "第一张菜单先求结构合理，再追求记忆点",
+      "platform": "小红书 / 公众号",
+      "format": "清单图文",
+      "scriptStatus": "未写",
+      "publishData": { "views": 0, "likes": 0, "saves": 0, "comments": 0, "conversions": 0 },
+      "review": "烧烤首批示例，待拍摄验证",
+      "sourceUrls": [],
+      "recommendationScore": 78,
+      "aiGenerated": true,
+      "riskNotes": ["不要把菜单简单做成“多就是好”，重点讲结构和毛利"]
+    },
+    {
+      "id": "topic-033",
+      "industry": "bbq",
+      "title": "为什么烧烤店越做越忙，利润却越来越薄",
+      "column": "烧烤店成本控制",
+      "topicCategory": "B端经营选题",
+      "contentType": "经营",
+      "targetUser": "烧烤店老板",
+      "painPoint": "串品过多、备货复杂、后厨效率低导致损耗高",
+      "businessLink": "串品标准化、备货节奏和损耗控制建议",
+      "hotSource": "门店经营复盘",
+      "angle": "用串品结构解释隐形成本",
+      "coreView": "菜单不是越丰富越好，能稳定复购的结构才赚钱",
+      "platform": "抖音 / 公众号",
+      "format": "口播 / 长图文",
+      "scriptStatus": "未写",
+      "publishData": { "views": 0, "likes": 0, "saves": 0, "comments": 0, "conversions": 0 },
+      "review": "烧烤首批示例，待拍摄验证",
+      "sourceUrls": [],
+      "recommendationScore": 80,
+      "aiGenerated": true,
+      "riskNotes": ["避免直接把“忙”和“赚不到钱”划等号，需讲清结构问题"]
+    },
+    {
+      "id": "topic-034",
+      "industry": "bbq",
+      "title": "烧烤店做爆品，不是多撒辣椒面就行",
+      "column": "烧烤店爆品打造",
+      "topicCategory": "爆品打造选题",
+      "contentType": "观点",
+      "targetUser": "烧烤店老板",
+      "painPoint": "把爆品理解成口味刺激，忽略出餐稳定和复购",
+      "businessLink": "爆品串品组合、标准化出餐方案",
+      "hotSource": "爆品打造",
+      "angle": "拆解爆品的感知价值、毛利和出餐稳定",
+      "coreView": "爆品必须同时满足好记、好出、好复购、好算账",
+      "platform": "抖音 / 视频号",
+      "format": "案例拆解",
+      "scriptStatus": "未写",
+      "publishData": { "views": 0, "likes": 0, "saves": 0, "comments": 0, "conversions": 0 },
+      "review": "烧烤首批示例，待拍摄验证",
+      "sourceUrls": [],
+      "recommendationScore": 83,
+      "aiGenerated": true,
+      "riskNotes": ["避免把爆品等同于单一辣度或流量话题，强调门店经营价值"]
+    },
+    {
+      "id": "topic-035",
+      "industry": "bbq",
+      "title": "烧烤店采购食材，不能只看单价",
+      "column": "餐饮老板避坑指南",
+      "topicCategory": "用户痛点选题",
+      "contentType": "痛点",
+      "targetUser": "烧烤店老板 / 餐饮采购负责人",
+      "painPoint": "只比价格导致损耗、断货和出品波动",
+      "businessLink": "采购综合成本、稳定供应和规格建议",
+      "hotSource": "采购避坑",
+      "angle": "从采购综合成本切入，讲清隐形支出",
+      "coreView": "采购不是比单价，而是比综合成本",
+      "platform": "视频号 / 公众号",
+      "format": "清单型图文",
+      "scriptStatus": "未写",
+      "publishData": { "views": 0, "likes": 0, "saves": 0, "comments": 0, "conversions": 0 },
+      "review": "烧烤首批示例，待拍摄验证",
+      "sourceUrls": [],
+      "recommendationScore": 79,
+      "aiGenerated": true,
+      "riskNotes": ["避免只谈低价，重点讲稳定性与出餐效率"]
     }
   ],
   "scriptTemplates": [
@@ -919,6 +1205,25 @@
         "视频号",
         "小红书"
       ]
+    },
+    {
+      "id": "script-007",
+      "industry": "bbq",
+      "name": "烧烤店清单型脚本",
+      "scenario": "夏季夜宵备货、新店菜单、基础串品推荐",
+      "steps": [
+        "说明适用场景",
+        "按优先级列出清单",
+        "解释每一类的门店价值",
+        "提醒容易遗漏的细节",
+        "引导评论区说出门店情况"
+      ],
+      "opener": "如果你是烧烤店老板，第一张菜单先别急着追爆款，先把这些串品配齐。",
+      "platforms": [
+        "小红书",
+        "公众号",
+        "视频号"
+      ]
     }
   ],
   "prompts": [
@@ -973,6 +1278,21 @@
         "可复用表达",
         "下一条选题"
       ]
+    },
+    {
+      "id": "prompt-005",
+      "industry": "bbq",
+      "purpose": "批量生成烧烤选题",
+      "audience": "烧烤店老板",
+      "body": "你是一个烧烤食材B端自媒体选题策划，请围绕【烧烤店老板】这个用户群体，结合【夜宵旺季、成本控制、串品标准化、供应链稳定】这几个关键词，生成20个适合短视频账号发布的选题。要求：每个选题要有B端业务价值，不要写成普通消费者种草内容，选题要能延展成系列内容。",
+      "outputFields": [
+        "标题",
+        "目标用户",
+        "用户痛点",
+        "内容角度",
+        "产品关联",
+        "脚本方向"
+      ]
     }
   ],
   "materials": [
@@ -1025,6 +1345,19 @@
         "供应链思维不是买得更便宜，而是让门店持续稳定地赚钱",
         "老板要算综合成本，不要只看采购单价"
       ]
+    },
+    {
+      "id": "material-005",
+      "industry": "bbq",
+      "title": "烧烤门店经营素材",
+      "description": "用于烧烤选题、脚本和转化的基础素材",
+      "items": [
+        "烧烤店老板：串品结构、毛利、夜宵客流",
+        "采购负责人：稳定供应、品质判断、价格波动",
+        "后厨负责人：备货效率、损耗、出餐标准",
+        "新开店老板：基础串品包、菜单设计、首批备货",
+        "连锁品牌：标准化、统一供应、门店复制"
+      ]
     }
   ],
   "hotspots": [
@@ -1067,6 +1400,17 @@
       "targetUser": "新开店老板",
       "recommendedAngle": "把第一张菜单、引流菜、利润菜和复购菜做成一套系列内容。",
       "priority": "中"
+    },
+    {
+      "id": "hotspot-005",
+      "industry": "bbq",
+      "title": "夏季夜宵消费波动",
+      "type": "季节经营",
+      "window": "未来2个月",
+      "matchedColumn": "烧烤店成本控制",
+      "targetUser": "烧烤店老板",
+      "recommendedAngle": "围绕夜宵高峰、串品组合和低损耗备货，给出一套可执行清单。",
+      "priority": "高"
     }
   ],
   "iterationSuggestions": [
@@ -1101,6 +1445,15 @@
       "action": "围绕夏季淡季做一组小吃甜品、外卖组合、低成本高感知价值内容。",
       "reason": "时间窗口明确，且与成本控制、客单价和套餐设计都能关联。",
       "output": "5条夏季淡季经营选题"
+    },
+    {
+      "id": "suggestion-005",
+      "industry": "bbq",
+      "type": "追热点",
+      "related": "夏天烧烤店客流不稳，先别急着降价，先改这3类串品组合",
+      "action": "围绕夏季夜宵、串品组合、低损耗备货和套餐结构做一组烧烤选题。",
+      "reason": "窗口明确，且与成本控制、出餐效率和毛利结构强相关。",
+      "output": "5条夏季夜宵经营选题"
     }
   ],
   "priorityTopics": [
@@ -1138,6 +1491,14 @@
       "priority": "中",
       "reason": "目标用户明确，可连接新店菜单、套餐和供应链产品。",
       "source": "新店开业套餐和引流菜设计"
+    },
+    {
+      "id": "priority-006",
+      "industry": "bbq",
+      "title": "烧烤店第一张菜单，哪些串负责引流，哪些串负责赚钱",
+      "priority": "高",
+      "reason": "目标用户明确，可连接新店菜单、套餐和供应链产品。",
+      "source": "夏天烧烤店客流不稳，先别急着降价，先改这3类串品组合"
     }
   ],
   "reviews": [
@@ -1176,6 +1537,19 @@
       "comments": 33,
       "conversions": 6,
       "conclusion": "收藏率较高，说明结构型内容适合做系列和模板。"
+    },
+    {
+      "id": "review-004",
+      "industry": "bbq",
+      "topicTitle": "烧烤店第一张菜单，哪些串负责引流，哪些串负责赚钱",
+      "publishDate": "2026-01-18",
+      "platform": "小红书",
+      "views": 7200,
+      "likes": 188,
+      "saves": 96,
+      "comments": 24,
+      "conversions": 5,
+      "conclusion": "清单型内容收藏率不错，适合继续做串品结构模板。"
     }
   ],
   "topicCategories": [

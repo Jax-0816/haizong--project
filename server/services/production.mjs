@@ -29,6 +29,7 @@ export async function researchProductionTopic(body) {
   const topic = findTopic(content, body.topicId);
   return runResearch({
     mode: "general",
+    industry: topic.industry || "hotpot",
     query: topic.title,
     targetUser: topic.targetUser,
     column: topic.column,
@@ -92,6 +93,7 @@ function normalizeProduction(production) {
 
   return {
     topicId,
+    industry: String(production.industry ?? "hotpot"),
     currentStep: productionSteps.includes(production.currentStep) ? production.currentStep : "topic",
     researchNotes: String(production.researchNotes ?? ""),
     selectedTemplateId: String(production.selectedTemplateId ?? ""),
@@ -144,6 +146,7 @@ function maybeUpsertReview(content, production) {
   const reviews = Array.isArray(content.reviews) ? content.reviews : [];
   const review = {
     id: nextReviewId(reviews),
+    industry: topic.industry || production.industry || "hotpot",
     topicTitle: topic.title,
     publishDate: draft.publishDate,
     platform: draft.platform,

@@ -3,7 +3,7 @@ import { requireEnv } from "../config.mjs";
 const DEFAULT_BASE_URL = "https://api.deepseek.com";
 const DEFAULT_MODEL = "deepseek-chat";
 
-export async function generateResearchInsight({ request, accountContext, sources }) {
+export async function generateResearchInsight({ request, accountContext, sources, industry }) {
   const apiKey = requireEnv("DEEPSEEK_API_KEY", "缺少 DEEPSEEK_API_KEY，请在 .env.local 中配置 DeepSeek API Key。");
   const baseUrl = (process.env.DEEPSEEK_BASE_URL || DEFAULT_BASE_URL).replace(/\/$/, "");
   const model = process.env.DEEPSEEK_MODEL || DEFAULT_MODEL;
@@ -21,12 +21,11 @@ export async function generateResearchInsight({ request, accountContext, sources
       messages: [
         {
           role: "system",
-          content:
-            "你是一个火锅食材供应链 B 端自媒体调研助手。你必须基于给定搜索来源做判断，不要编造来源、数据、品牌事实或产品优势。只返回 JSON。",
+          content: "你是一个餐饮供应链 B 端自媒体调研助手。你必须基于给定搜索来源做判断，不要编造来源、数据、品牌事实或产品优势。只返回 JSON。",
         },
         {
           role: "user",
-          content: buildPrompt({ request, accountContext, sources }),
+          content: buildPrompt({ request, accountContext, sources, industry }),
         },
       ],
     }),
@@ -51,7 +50,7 @@ export async function generateResearchInsight({ request, accountContext, sources
   return parseModelJson(content);
 }
 
-export async function generateTopicCandidates({ request, accountContext, sources }) {
+export async function generateTopicCandidates({ request, accountContext, sources, industry }) {
   const apiKey = requireEnv("DEEPSEEK_API_KEY", "缺少 DEEPSEEK_API_KEY，请在 .env.local 中配置 DeepSeek API Key。");
   const baseUrl = (process.env.DEEPSEEK_BASE_URL || DEFAULT_BASE_URL).replace(/\/$/, "");
   const model = process.env.DEEPSEEK_MODEL || DEFAULT_MODEL;
@@ -69,12 +68,11 @@ export async function generateTopicCandidates({ request, accountContext, sources
       messages: [
         {
           role: "system",
-          content:
-            "你是一个火锅食材供应链 B 端自媒体选题策略助手。你必须基于给定搜索来源生成候选选题，不要编造来源、数据、品牌事实或产品优势。只返回 JSON。",
+          content: "你是一个餐饮供应链 B 端自媒体选题策略助手。你必须基于给定搜索来源生成候选选题，不要编造来源、数据、品牌事实或产品优势。只返回 JSON。",
         },
         {
           role: "user",
-          content: buildTopicCandidatePrompt({ request, accountContext, sources }),
+          content: buildTopicCandidatePrompt({ request, accountContext, sources, industry }),
         },
       ],
     }),
@@ -117,8 +115,7 @@ export async function generateProductionScript({ topic, template, researchNotes,
       messages: [
         {
           role: "system",
-          content:
-            "你是一个火锅食材供应链 B 端账号短视频编导。生成脚本必须服务门店经营价值，不能写成普通消费者种草。只返回 JSON。",
+          content: `你是一个${getIndustryLabel(topic.industry)}B端账号短视频编导。生成脚本必须服务门店经营价值，不能写成普通消费者种草。只返回 JSON。`,
         },
         {
           role: "user",
@@ -165,8 +162,7 @@ export async function generateProductionPublish({ topic, scriptDraft, platforms 
       messages: [
         {
           role: "system",
-          content:
-            "你是一个火锅食材供应链 B 端账号发布运营。生成标题、简介、话题和平台文案，必须专业、直接、重经营价值。只返回 JSON。",
+          content: `你是一个${getIndustryLabel(topic.industry)}B端账号发布运营。生成标题、简介、话题和平台文案，必须专业、直接、重经营价值。只返回 JSON。`,
         },
         {
           role: "user",
@@ -195,13 +191,14 @@ export async function generateProductionPublish({ topic, scriptDraft, platforms 
   return parseModelJson(content);
 }
 
-function buildPrompt({ request, accountContext, sources }) {
+function buildPrompt({ request, accountContext, sources, industry }) {
+  const industryLabel = getIndustryLabel(industry);
   const taskByMode = {
-    dashboardDecision: "请为首页内容决策驾驶舱生成今日 AI 决策：指出今天最值得做的方向、3条可执行选题、需要补充的素材、风险提醒。",
-    hotspotMatch: "请判断这个热点是否适合当前火锅食材供应链账号，并给出内容角度、风险提醒和可延展选题。",
-    topicExpand: "请把这个推荐选题补全成可执行内容方案，包含目标用户、痛点、角度、核心观点、平台和形式。",
-    materialSuggestion: "请根据素材迭代线索，建议应该补充哪些痛点、金句、产品资料或案例素材。",
-    general: "请根据搜索结果，为火锅食材供应链 B 端账号生成联网调研结论。",
+    dashboardDecision: `请为${industryLabel}首页内容决策驾驶舱生成今日 AI 决策：指出今天最值得做的方向、3条可执行选题、需要补充的素材、风险提醒。`,
+    hotspotMatch: `请判断这个热点是否适合当前${industryLabel}账号，并给出内容角度、风险提醒和可延展选题。`,
+    topicExpand: `请把这个${industryLabel}推荐选题补全成可执行内容方案，包含目标用户、痛点、角度、核心观点、平台和形式。`,
+    materialSuggestion: `请根据${industryLabel}素材迭代线索，建议应该补充哪些痛点、金句、产品资料或案例素材。`,
+    general: `请根据搜索结果，为${industryLabel}B端账号生成联网调研结论。`,
   };
   const task = taskByMode[request.mode] ?? taskByMode.general;
 
@@ -240,11 +237,12 @@ function buildPrompt({ request, accountContext, sources }) {
   );
 }
 
-function buildTopicCandidatePrompt({ request, accountContext, sources }) {
+function buildTopicCandidatePrompt({ request, accountContext, sources, industry }) {
+  const industryLabel = getIndustryLabel(industry);
   const categoryRules = {
-    行业热点选题: "围绕餐饮趋势、火锅行业、消费变化和供应链热点，判断能否转成 B 端经营内容。",
+    行业热点选题: `围绕餐饮趋势、${industryLabel}行业、消费变化和供应链热点，判断能否转成 B 端经营内容。`,
     节气节日选题: "围绕节日节点、节气、备货、套餐和旺季淡季，给门店可执行的备货或营销角度。",
-    产品种草选题: "围绕产品卖点、使用场景和采购理由，但必须落到 B 端采购、毛利、复购或出餐效率。",
+    产品种草选题: `围绕产品卖点、使用场景和采购理由，但必须落到 B 端采购、毛利、复购或出餐效率。`,
     B端经营选题: "围绕成本、毛利、翻台、菜单结构、后厨效率和供应链稳定。",
     用户痛点选题: "围绕采购、损耗、出餐、复购、标准化、库存等门店真实痛点。",
     爆品打造选题: "围绕招牌菜、爆款食材、套餐组合和复购逻辑，避免空泛营销话术。",
@@ -253,11 +251,11 @@ function buildTopicCandidatePrompt({ request, accountContext, sources }) {
 
   return JSON.stringify(
     {
-      task: "请根据搜索来源生成可人工确认入池的候选选题。",
-      categoryRule: categoryRules[request.category],
-      accountContext,
-      request,
-      sources,
+        task: "请根据搜索来源生成可人工确认入池的候选选题。",
+        categoryRule: categoryRules[request.category],
+        accountContext,
+        request,
+        sources,
       outputSchema: {
         candidates: [
           {
@@ -294,7 +292,7 @@ function buildTopicCandidatePrompt({ request, accountContext, sources }) {
 function buildProductionScriptPrompt({ topic, template, researchNotes, materials }) {
   return JSON.stringify(
     {
-      task: "请基于选题、调研依据、脚本模板和素材线索，生成一条 60 到 90 秒短视频脚本草稿。",
+      task: `请基于选题、调研依据、脚本模板和素材线索，生成一条 60 到 90 秒的${getIndustryLabel(topic.industry)}短视频脚本草稿。`,
       topic,
       template,
       researchNotes,
@@ -302,7 +300,7 @@ function buildProductionScriptPrompt({ topic, template, researchNotes, materials
       outputSchema: {
         opener: "开头钩子，20字以内",
         structure: "正文结构，按 3 到 5 个段落列出",
-        ending: "结尾引导，面向火锅店老板或采购负责人",
+        ending: `结尾引导，面向${getIndustryAudience(topic.industry)}`,
         voiceover: "完整口播文案",
       },
       rules: [
@@ -320,7 +318,7 @@ function buildProductionScriptPrompt({ topic, template, researchNotes, materials
 function buildProductionPublishPrompt({ topic, scriptDraft, platforms }) {
   return JSON.stringify(
     {
-      task: "请基于选题和脚本生成发布内容。",
+      task: `请基于选题和脚本生成${getIndustryLabel(topic.industry)}发布内容。`,
       topic,
       scriptDraft,
       platforms,
@@ -338,12 +336,22 @@ function buildProductionPublishPrompt({ topic, scriptDraft, platforms }) {
       rules: [
         "只输出 JSON，不要 Markdown。",
         "标题专业直接，不要夸张标题党。",
-        "平台文案要适合 B 端火锅店老板、采购负责人和后厨负责人阅读。",
+        `平台文案要适合 B 端${getIndustryAudience(topic.industry)}阅读。`,
       ],
     },
     null,
     2,
   );
+}
+
+function getIndustryLabel(industry) {
+  return industry === "bbq" ? "烧烤食材供应链" : "火锅食材供应链";
+}
+
+function getIndustryAudience(industry) {
+  return industry === "bbq"
+    ? "烧烤店老板、餐饮采购负责人和后厨负责人"
+    : "火锅店老板、采购负责人和后厨负责人";
 }
 
 function parseModelJson(content) {

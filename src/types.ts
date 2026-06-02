@@ -1,4 +1,81 @@
 export type ScriptStatus = "未写" | "已写" | "已拍" | "已发";
+export type IndustryId = "hotpot" | "bbq";
+
+export type IndustryQuickStat = {
+  label: string;
+  value: string;
+  detail: string;
+};
+
+export type IndustryHeroTopic = {
+  title: string;
+  targetUser: string;
+  contentType: string;
+  productAssociation: string;
+  platform: string;
+};
+
+export type IndustryWorkflowStep = {
+  icon: string;
+  title: string;
+  detail: string;
+};
+
+export type IndustryAssetCard = {
+  title: string;
+  detail: string;
+  count: string;
+  updated: string;
+};
+
+export type IndustryPlanEntry = {
+  day: string;
+  theme: string;
+  output: string;
+};
+
+export type IndustryProfile = {
+  id: IndustryId;
+  label: string;
+  name: string;
+  audience: string;
+  promise: string;
+  style: string;
+  platforms: string[];
+  conversionGoal: string;
+  columns: string[];
+  quickTopics: string[];
+  defaultTopicCandidate: {
+    category: TopicCategory;
+    query: string;
+    targetUser: string;
+    column: string;
+  };
+  defaultResearch: {
+    query: string;
+    targetUser: string;
+    column: string;
+  };
+  dashboard: {
+    kicker: string;
+    subtitle: string;
+    heroTitle: string;
+    heroDescription: string;
+    heroTopic: IndustryHeroTopic;
+    stats: IndustryQuickStat[];
+    workflowSteps: IndustryWorkflowStep[];
+    assetCards: IndustryAssetCard[];
+    weeklyPlan: IndustryPlanEntry[];
+  };
+  searchKeywords: {
+    dashboardDecision: string;
+    hotspotMatch: string;
+    topicExpand: string;
+    materialSuggestion: string;
+    general: string;
+    candidate: string;
+  };
+};
 
 export type TopicCategory =
   | "行业热点选题"
@@ -14,6 +91,7 @@ export type Topic = {
   title: string;
   column: string;
   topicCategory: TopicCategory;
+  industry?: IndustryId;
   contentType: string;
   targetUser: string;
   painPoint: string;
@@ -54,6 +132,7 @@ export type ScriptTemplate = {
   steps: string[];
   opener: string;
   platforms: string[];
+  industry?: IndustryId;
 };
 
 export type PromptTemplate = {
@@ -62,6 +141,7 @@ export type PromptTemplate = {
   audience: string;
   body: string;
   outputFields: string[];
+  industry?: IndustryId;
 };
 
 export type MaterialSection = {
@@ -69,6 +149,7 @@ export type MaterialSection = {
   title: string;
   description: string;
   items: string[];
+  industry?: IndustryId;
 };
 
 export type ReviewRecord = {
@@ -82,6 +163,7 @@ export type ReviewRecord = {
   comments: number;
   conversions: number;
   conclusion: string;
+  industry?: IndustryId;
 };
 
 export type ProductionStep =
@@ -121,6 +203,7 @@ export type ProductionReviewDraft = {
 
 export type ContentProduction = {
   topicId: string;
+  industry?: IndustryId;
   currentStep: ProductionStep;
   researchNotes: string;
   selectedTemplateId: string;
@@ -145,6 +228,7 @@ export type HotspotOpportunity = {
   targetUser: string;
   recommendedAngle: string;
   priority: "高" | "中" | "低";
+  industry?: IndustryId;
 };
 
 export type IterationSuggestion = {
@@ -154,6 +238,7 @@ export type IterationSuggestion = {
   action: string;
   reason: string;
   output: string;
+  industry?: IndustryId;
 };
 
 export type PriorityTopic = {
@@ -162,6 +247,7 @@ export type PriorityTopic = {
   priority: "高" | "中" | "低";
   reason: string;
   source: string;
+  industry?: IndustryId;
 };
 
 export type ResearchFreshness = "noLimit" | "oneDay" | "oneWeek" | "oneMonth" | "oneYear";
@@ -169,6 +255,7 @@ export type ResearchMode = "general" | "dashboardDecision" | "hotspotMatch" | "t
 
 export type ResearchRequest = {
   mode?: ResearchMode;
+  industry?: IndustryId;
   query: string;
   targetUser: string;
   column: string;
@@ -210,6 +297,7 @@ export type ResearchResult = {
 export type GeneratedTopicCandidate = {
   id: string;
   title: string;
+  industry?: IndustryId;
   topicCategory: TopicCategory;
   targetUser: string;
   painPoint: string;
@@ -225,6 +313,7 @@ export type GeneratedTopicCandidate = {
 };
 
 export type TopicCandidateGenerateRequest = {
+  industry?: IndustryId;
   category: TopicCategory;
   query: string;
   targetUser: string;
@@ -243,6 +332,7 @@ export type TopicCandidateGenerateResult = {
 };
 
 export type TopicRefreshRequest = {
+  industry?: IndustryId;
   query: string;
   column: string;
   sourceFilter: string;
@@ -252,6 +342,7 @@ export type TopicRefreshRequest = {
 
 export type ContentData = {
   positioning: Positioning;
+  industryProfiles: IndustryProfile[];
   columns: string[];
   topics: Topic[];
   scriptTemplates: ScriptTemplate[];

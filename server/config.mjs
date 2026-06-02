@@ -1,9 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-const envPath = resolve(process.cwd(), ".env.local");
-
-export function loadLocalEnv() {
+function loadEnvFile(envPath) {
   if (!existsSync(envPath)) {
     return;
   }
@@ -29,6 +27,32 @@ export function loadLocalEnv() {
       process.env[key] = value;
     }
   }
+}
+
+export function loadEnvFiles(mode = process.env.NODE_ENV || "development") {
+  const cwd = process.cwd();
+  const candidates = [
+    ".env",
+    `.env.${mode}`,
+    ".env.local",
+    `.env.${mode}.local`,
+  ];
+
+  candidates.forEach((name) => loadEnvFile(resolve(cwd, name)));
+}
+
+export function getEnv(name, fallback = "") {
+  const value = process.env[name];
+  return value === undefined ? fallback : value;
+}
+
+export function getBooleanEnv(name, fallback = false) {
+  const value = process.env[name];
+  if (value === undefined) {
+    return fallback;
+  }
+
+  return ["1", "true", "yes", "on"].includes(String(value).trim().toLowerCase());
 }
 
 export function requireEnv(name, hint) {

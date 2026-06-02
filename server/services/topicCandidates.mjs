@@ -1,4 +1,5 @@
 import { readContent, writeContent } from "./contentStore.mjs";
+import { getIndustryProfile, getTopicColumnFallback, normalizeIndustryId } from "./industry.mjs";
 import { generateTopicCandidates } from "./llm.mjs";
 import { searchWeb } from "./search.mjs";
 
@@ -28,14 +29,18 @@ export function getTopicCategories() {
 
 export async function generateCandidates(request) {
   const content = readContent();
+  const industry = normalizeIndustryId(request.industry);
+  const profile = getIndustryProfile(content, industry);
   const sources = await searchWeb({
-    query: buildCandidateSearchQuery(request),
+    query: buildCandidateSearchQuery(request, profile),
     freshness: request.freshness,
   });
 
   const modelResult = await generateTopicCandidates({
     request,
+    industry,
     accountContext: {
+      industryProfile: profile,
       positioning: content.positioning,
       columns: content.columns,
       materials: content.materials,
@@ -80,16 +85,19 @@ function buildRefreshRequest(filters, content) {
   const sourceFilter = String(filters.sourceFilter ?? "").trim();
   const contentStatus = String(filters.contentStatus ?? "").trim();
   const query = String(filters.query ?? "").trim();
-  const normalizedColumn = column && column !== "全部栏目" ? column : content.columns[0];
+  const industry = normalizeIndustryId(filters.industry);
+  const profile = getIndustryProfile(content, industry);
+  const normalizedColumn = column && column !== "全部栏目" ? column : getTopicColumnFallback(content, industry);
   const category = inferCategoryFromSource(sourceFilter, normalizedColumn);
   const searchParts = [
     query,
-    column !== "全部栏目" ? `${column} 相关内容选题` : "火锅店近期经营热点与供应链选题",
+    column !== "全部栏目" ? `${column} 相关内容选题` : `${profile?.label ?? "当前行业"}近期经营热点与供应链选题`,
     sourceFilter !== "全部来源" ? `${sourceFilter} 方向` : "",
     contentStatus !== "全部状态" ? `${contentStatus} 可推进内容` : "",
   ].filter(Boolean);
 
   return {
+    industry,
     category,
     query: searchParts.join("，"),
     targetUser: content.positioning.audience,
@@ -107,14 +115,14 @@ function buildRefreshRequest(filters, content) {
   };
 }
 
-function buildCandidateSearchQuery(request) {
+function buildCandidateSearchQuery(request, profile) {
   return truncateSearchQuery(
     [
       request.query,
       request.category,
       request.targetUser,
       request.column,
-      categorySearchIntent[request.category],
+      profile?.searchKeywords?.candidate ?? categorySearchIntent[request.category],
     ]
       .filter(Boolean)
       .join(" "),
@@ -137,6 +145,7 @@ function normalizeCandidateResult({ request, sources, modelResult }) {
         const score = clampScore(Number(item.recommendationScore));
         return {
           id: `candidate-${Date.now()}-${index + 1}`,
+          industry: normalizeIndustryId(item.industry, request.industry),
           title: String(item.title ?? "").trim(),
           topicCategory: normalizeCategory(item.topicCategory, request.category),
           targetUser: String(item.targetUser ?? request.targetUser ?? ""),
@@ -178,11 +187,13 @@ function normalizeTopicForStorage(candidate, content) {
   }
 
   const topicCategory = normalizeCategory(candidate.topicCategory);
+  const industry = normalizeIndustryId(candidate.industry);
 
   return {
     id: nextTopicId(content.topics),
+    industry,
     title: String(candidate.title).trim(),
-    column: normalizeColumn(candidate.column, content.columns, topicCategory),
+    column: normalizeColumn(candidate.column, content.columns, topicCategory, industry),
     topicCategory,
     contentType: inferContentType(topicCategory),
     targetUser: String(candidate.targetUser).trim(),
@@ -203,23 +214,34 @@ function normalizeTopicForStorage(candidate, content) {
   };
 }
 
-function normalizeColumn(column, columns, topicCategory) {
+function normalizeColumn(column, columns, topicCategory, industry) {
   const value = String(column ?? "").trim();
   if (columns.includes(value)) {
     return value;
   }
 
   const fallbackByCategory = {
-    行业热点选题: "火锅店成本控制",
-    节气节日选题: "节日节气备货建议",
-    产品种草选题: "火锅食材选品指南",
-    B端经营选题: "火锅店成本控制",
-    用户痛点选题: "餐饮老板避坑指南",
-    爆品打造选题: "火锅店爆品打造",
-    系列化选题: "食材供应链知识",
+    hotpot: {
+      行业热点选题: "火锅店成本控制",
+      节气节日选题: "节日节气备货建议",
+      产品种草选题: "火锅食材选品指南",
+      B端经营选题: "火锅店成本控制",
+      用户痛点选题: "餐饮老板避坑指南",
+      爆品打造选题: "火锅店爆品打造",
+      系列化选题: "食材供应链知识",
+    },
+    bbq: {
+      行业热点选题: "烧烤店成本控制",
+      节气节日选题: "节日节气备货建议",
+      产品种草选题: "烧烤食材选品指南",
+      B端经营选题: "烧烤店成本控制",
+      用户痛点选题: "餐饮老板避坑指南",
+      爆品打造选题: "烧烤店爆品打造",
+      系列化选题: "食材供应链知识",
+    },
   };
 
-  return fallbackByCategory[topicCategory] ?? columns[0];
+  return fallbackByCategory[industry]?.[topicCategory] ?? columns[0];
 }
 
 function inferContentType(topicCategory) {
@@ -266,16 +288,25 @@ function inferCategoryFromSource(sourceFilter, column) {
   if (column === "火锅店爆品打造") {
     return "爆品打造选题";
   }
+  if (column === "烧烤店爆品打造") {
+    return "爆品打造选题";
+  }
   if (column === "节日节气备货建议") {
     return "节气节日选题";
   }
   if (column === "餐饮老板避坑指南") {
     return "用户痛点选题";
   }
+  if (column === "烧烤店成本控制") {
+    return "B端经营选题";
+  }
   if (column === "食材供应链知识") {
     return "系列化选题";
   }
   if (column === "火锅食材选品指南") {
+    return "产品种草选题";
+  }
+  if (column === "烧烤食材选品指南") {
     return "产品种草选题";
   }
   return "行业热点选题";

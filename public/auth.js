@@ -1,7 +1,7 @@
 (function attachAuth(global) {
-  var CONFIG = {
+  var defaults = {
     AUTH_MODE: "local",
-    AUTH_API_BASE_URL: "https://your-aliyun-domain.example.com",
+    AUTH_API_BASE_URL: "",
     LOGIN_ENDPOINT: "/api/auth/login",
     PROFILE_ENDPOINT: "/api/auth/profile",
     LOGOUT_ENDPOINT: "/api/auth/logout",
@@ -14,6 +14,33 @@
       username: "admin",
       password: "123456",
       displayName: "海总管理员",
+    },
+  };
+  var runtimeConfig = global.__APP_CONFIG__ && typeof global.__APP_CONFIG__ === "object" ? global.__APP_CONFIG__ : {};
+  var CONFIG = {
+    AUTH_MODE: runtimeConfig.AUTH_MODE || defaults.AUTH_MODE,
+    AUTH_API_BASE_URL: runtimeConfig.AUTH_API_BASE_URL || defaults.AUTH_API_BASE_URL,
+    LOGIN_ENDPOINT: runtimeConfig.LOGIN_ENDPOINT || defaults.LOGIN_ENDPOINT,
+    PROFILE_ENDPOINT: runtimeConfig.PROFILE_ENDPOINT || defaults.PROFILE_ENDPOINT,
+    LOGOUT_ENDPOINT: runtimeConfig.LOGOUT_ENDPOINT || defaults.LOGOUT_ENDPOINT,
+    VALIDATE_ENDPOINT: runtimeConfig.VALIDATE_ENDPOINT || defaults.VALIDATE_ENDPOINT,
+    LOGIN_PAGE: runtimeConfig.LOGIN_PAGE || defaults.LOGIN_PAGE,
+    HOME_PAGE: runtimeConfig.HOME_PAGE || defaults.HOME_PAGE,
+    STORAGE_KEY: runtimeConfig.STORAGE_KEY || defaults.STORAGE_KEY,
+    SESSION_TTL_MS: Number(runtimeConfig.SESSION_TTL_MS || defaults.SESSION_TTL_MS),
+    LOCAL_CREDENTIALS: {
+      username:
+        runtimeConfig.LOCAL_CREDENTIALS && runtimeConfig.LOCAL_CREDENTIALS.username
+          ? String(runtimeConfig.LOCAL_CREDENTIALS.username)
+          : defaults.LOCAL_CREDENTIALS.username,
+      password:
+        runtimeConfig.LOCAL_CREDENTIALS && runtimeConfig.LOCAL_CREDENTIALS.password
+          ? String(runtimeConfig.LOCAL_CREDENTIALS.password)
+          : defaults.LOCAL_CREDENTIALS.password,
+      displayName:
+        runtimeConfig.LOCAL_CREDENTIALS && runtimeConfig.LOCAL_CREDENTIALS.displayName
+          ? String(runtimeConfig.LOCAL_CREDENTIALS.displayName)
+          : defaults.LOCAL_CREDENTIALS.displayName,
     },
   };
 
