@@ -536,7 +536,7 @@ function App() {
       <main className="workspace">
         <header className="topbar">
           <div>
-            <p className="eyebrow">{resolvedIndustryProfile.dashboard.kicker}</p>
+            <p className="eyebrow">{activeView === "scripts" ? (activeIndustry === "bbq" ? "烧烤食材供应链" : "火锅食材供应链") : resolvedIndustryProfile.dashboard.kicker}</p>
             <h1>{navItems.find((item) => item.id === activeView)?.label}</h1>
             <div className="topbar-note-inline">{viewDescriptions[activeView]}</div>
           </div>
@@ -613,7 +613,7 @@ function App() {
         ) : null}
 
         {activeView === "research" ? <ResearchView activeIndustry={activeIndustry} industryProfile={resolvedIndustryProfile} /> : null}
-        {activeView === "scripts" ? <ScriptsView activeIndustry={activeIndustry} industryProfile={resolvedIndustryProfile} /> : null}
+        {activeView === "scripts" ? <ScriptsView activeIndustry={activeIndustry} industryProfile={resolvedIndustryProfile} setActiveIndustry={setActiveIndustry} /> : null}
         {activeView === "prompts" ? (
           <PromptsView activeIndustry={activeIndustry} copiedPromptId={copiedPromptId} copyPrompt={copyPrompt} industryProfile={resolvedIndustryProfile} />
         ) : null}
@@ -2433,29 +2433,118 @@ function ResearchResultPanel({ result }: { result: ResearchResult | null }) {
 function ScriptsView({
   activeIndustry,
   industryProfile,
+  setActiveIndustry,
 }: {
   activeIndustry: IndustryId;
   industryProfile: IndustryProfile;
+  setActiveIndustry: (id: IndustryId) => void;
 }) {
+  const [refreshingTemplateId, setRefreshingTemplateId] = useState<string | null>(null);
+  const [templateOverrides, setTemplateOverrides] = useState<Record<string, { scenario: string; steps: string[]; opener: string }>>({});
+
+  const industryProfiles = data.industryProfiles as IndustryProfile[];
+  const currentProfile = industryProfiles.find((p) => p.id === activeIndustry) ?? industryProfile;
+
+  const handleRefreshTemplate = async (template: ScriptTemplate) => {
+    setRefreshingTemplateId(template.id);
+    try {
+      const response = await fetch("/api/scripts/templates/refresh", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ template, industry: activeIndustry }),
+      });
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.error ?? `AI 生成失败（${response.status}）`);
+      }
+
+      const result = await response.json();
+      const overrideKey = `${template.id}:${activeIndustry}`;
+      setTemplateOverrides((prev) => ({
+        ...prev,
+        [overrideKey]: {
+          scenario: String(result.scenario ?? "").trim(),
+          steps: Array.isArray(result.steps) ? result.steps.map((s: string) => String(s).trim()).filter(Boolean) : [],
+          opener: String(result.opener ?? "").trim(),
+        },
+      }));
+    } catch (caught) {
+      alert("AI 生成失败，请稍后重试");
+    } finally {
+      setRefreshingTemplateId(null);
+    }
+  };
+
+  const resolveTemplate = (template: ScriptTemplate): ScriptTemplate => {
+    const overrideKey = `${template.id}:${activeIndustry}`;
+    const override = templateOverrides[overrideKey];
+    if (!override) return template;
+    return {
+      ...template,
+      scenario: override.scenario || template.scenario,
+      steps: override.steps.length > 0 ? override.steps : template.steps,
+      opener: override.opener || template.opener,
+    };
+  };
+
+  const filteredTemplates = (data.scriptTemplates as ScriptTemplate[]).filter(
+    (template) => !template.industry || template.industry === activeIndustry,
+  );
+
   return (
-    <section className="template-grid">
-      {(data.scriptTemplates as ScriptTemplate[])
-        .filter((template) => !template.industry || template.industry === activeIndustry)
-        .map((template) => (
+    <section>
+      <div className="industry-switcher" role="tablist" aria-label="品类切换" style={{ marginBottom: "20px" }}>
+        {industryProfiles.map((profile) => (
+          <button
+            className={`industry-switch ${activeIndustry === profile.id ? "active" : ""}`}
+            key={profile.id}
+            onClick={() => setActiveIndustry(profile.id)}
+            role="tab"
+            type="button"
+          >
+            {profile.label}
+          </button>
+        ))}
+      </div>
+      <section className="template-grid">
+        {filteredTemplates.map((template) => {
+          const resolved = resolveTemplate(template);
+          const isRefreshing = refreshingTemplateId === template.id;
+          return (
         <article className="panel template-card" key={template.id}>
           <div className="section-heading">
-            <h2>{adaptIndustryText(template.name, industryProfile)}</h2>
-            <span>{template.platforms.join(" / ")}</span>
+            <h2>{adaptIndustryText(resolved.name, currentProfile)}</h2>
+            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+              <span>{resolved.platforms.join(" / ")}</span>
+              <button
+                className="icon-button"
+                disabled={isRefreshing}
+                onClick={() => handleRefreshTemplate(template)}
+                style={{ minHeight: "34px", padding: "0 12px", fontSize: "12px" }}
+                title="AI 刷新模板内容"
+                type="button"
+              >
+                {isRefreshing ? (
+                  <Loader2 className="spin-icon" size={14} aria-hidden="true" />
+                ) : (
+                  <Sparkles size={14} aria-hidden="true" />
+                )}
+                <span>{isRefreshing ? "生成中" : "刷新"}</span>
+              </button>
+            </div>
           </div>
-          <p>{adaptIndustryText(template.scenario, industryProfile)}</p>
+          <p>{adaptIndustryText(resolved.scenario, currentProfile)}</p>
           <ol>
-            {template.steps.map((step) => (
-              <li key={step}>{adaptIndustryText(step, industryProfile)}</li>
+            {resolved.steps.map((step) => (
+              <li key={step}>{adaptIndustryText(step, currentProfile)}</li>
             ))}
           </ol>
-          <blockquote>{adaptIndustryText(template.opener, industryProfile)}</blockquote>
+          <blockquote>{adaptIndustryText(resolved.opener, currentProfile)}</blockquote>
         </article>
-      ))}
+          );
+        })}
+      </section>
     </section>
   );
 }
@@ -2508,11 +2597,71 @@ function MaterialsView({
   activeIndustry: IndustryId;
   industryProfile: IndustryProfile;
 }) {
+  const [expandedItems, setExpandedItems] = useState<Record<string, string[]>>({});
+  const [loadingSectionId, setLoadingSectionId] = useState<string | null>(null);
+  const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({});
+
+  const handleLoadMore = async (section: MaterialSection & { industry?: IndustryId }) => {
+    setLoadingSectionId(section.id);
+    try {
+      const allItems = [...section.items, ...(expandedItems[section.id] ?? [])];
+      const response = await fetch("/api/materials/expand-phrases", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sectionTitle: section.title,
+          existingItems: allItems,
+          industry: activeIndustry,
+        }),
+      });
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.error ?? `AI 生成失败（${response.status}）`);
+      }
+
+      const result = await response.json();
+      const newPhrases: string[] = Array.isArray(result.items) ? result.items.map((s: string) => String(s).trim()).filter(Boolean) : [];
+
+      if (newPhrases.length > 0) {
+        setExpandedItems((prev) => ({
+          ...prev,
+          [section.id]: [...(prev[section.id] ?? []), ...newPhrases],
+        }));
+        setCollapsedSections((prev) => ({ ...prev, [section.id]: false }));
+      }
+    } catch (caught) {
+      alert("AI 生成失败，请稍后重试");
+    } finally {
+      setLoadingSectionId(null);
+    }
+  };
+
+  const toggleCollapse = (sectionId: string) => {
+    setCollapsedSections((prev) => ({ ...prev, [sectionId]: !prev[sectionId] }));
+  };
+
+  const resolveItems = (section: MaterialSection & { industry?: IndustryId }): string[] => {
+    const extra = expandedItems[section.id];
+    return extra ? [...section.items, ...extra] : section.items;
+  };
+
+  const getExtraCount = (sectionId: string): number => {
+    return (expandedItems[sectionId] ?? []).length;
+  };
+
   return (
     <section className="template-grid">
       {(data.materials as Array<MaterialSection & { industry?: IndustryId }>)
         .filter((section) => !section.industry || section.industry === activeIndustry)
-        .map((section) => (
+        .map((section) => {
+          const items = resolveItems(section);
+          const extraCount = getExtraCount(section.id);
+          const isCollapsed = collapsedSections[section.id] ?? false;
+          const hasExtra = extraCount > 0;
+          const visibleItems = hasExtra && isCollapsed ? section.items : items;
+          const isLoading = loadingSectionId === section.id;
+          return (
         <article className="panel material-card" key={section.id}>
           <div className="section-heading">
             <h2>{adaptIndustryText(section.title, industryProfile)}</h2>
@@ -2520,12 +2669,40 @@ function MaterialsView({
           </div>
           <p>{adaptIndustryText(section.description, industryProfile)}</p>
           <ul>
-            {section.items.map((item) => (
+            {visibleItems.map((item) => (
               <li key={item}>{adaptIndustryText(item, industryProfile)}</li>
             ))}
           </ul>
+          <div style={{ display: "flex", gap: "8px", marginTop: "8px" }}>
+            {hasExtra ? (
+              <button
+                className="ghost-button"
+                onClick={() => toggleCollapse(section.id)}
+                style={{ flex: 1, minHeight: "36px", borderRadius: "12px" }}
+                type="button"
+              >
+                <span>{isCollapsed ? `展开 (${extraCount}条)` : "收起"}</span>
+              </button>
+            ) : null}
+            <button
+              className="ghost-button"
+              disabled={isLoading}
+              onClick={() => handleLoadMore(section)}
+              style={{ flex: 1, minHeight: "36px", borderRadius: "12px" }}
+              title="AI 生成更多内容"
+              type="button"
+            >
+              {isLoading ? (
+                <Loader2 className="spin-icon" size={14} aria-hidden="true" />
+              ) : (
+                <Sparkles size={14} aria-hidden="true" />
+              )}
+              <span>{isLoading ? "生成中" : "加载更多"}</span>
+            </button>
+          </div>
         </article>
-      ))}
+          );
+        })}
     </section>
   );
 }

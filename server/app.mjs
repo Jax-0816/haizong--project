@@ -1,7 +1,9 @@
+import { getEnv } from "./config.mjs";
 import { readContent, saveContent } from "./services/contentStore.mjs";
 import { generatePublishDraft, generateScriptDraft, researchProductionTopic, saveProduction } from "./services/production.mjs";
 import { runResearch } from "./services/research.mjs";
 import { confirmTopic, generateCandidates, getTopicCategories, refreshCandidates } from "./services/topicCandidates.mjs";
+import { expandMaterialPhrases, refreshScriptTemplate } from "./services/llm.mjs";
 import { getAppRuntimeConfig } from "./runtimeConfig.mjs";
 import { normalizeIndustryId } from "./services/industry.mjs";
 
@@ -21,6 +23,16 @@ export function createAppHandler(options = {}) {
         const body = await readJsonBody(req, { maxBytes: 2 * 1024 * 1024 });
         const result = saveContent(body.content ?? body);
         sendJson(res, 200, result);
+        return;
+      }
+
+      if (req.method === "GET" && pathname === "/api/health") {
+        sendJson(res, 200, {
+          status: "ok",
+          version: "0.1.0",
+          uptime: process.uptime(),
+          contentWritable: getEnv("CONTENT_READONLY", "false") !== "true",
+        });
         return;
       }
 
@@ -79,6 +91,26 @@ export function createAppHandler(options = {}) {
       if (req.method === "POST" && pathname === "/api/production/generate-publish") {
         const body = await readJsonBody(req);
         const result = await generatePublishDraft(body);
+        sendJson(res, 200, result);
+        return;
+      }
+
+      if (req.method === "POST" && pathname === "/api/scripts/templates/refresh") {
+        const body = await readJsonBody(req);
+        validateTemplateRefreshRequest(body);
+        const result = await refreshScriptTemplate({ template: body.template, industry: normalizeIndustryId(body.industry) });
+        sendJson(res, 200, result);
+        return;
+      }
+
+      if (req.method === "POST" && pathname === "/api/materials/expand-phrases") {
+        const body = await readJsonBody(req);
+        validateMaterialExpandRequest(body);
+        const result = await expandMaterialPhrases({
+          sectionTitle: body.sectionTitle,
+          existingItems: body.existingItems,
+          industry: normalizeIndustryId(body.industry),
+        });
         sendJson(res, 200, result);
         return;
       }
@@ -187,6 +219,68 @@ function validateTopicRefreshRequest(body) {
 
   const limit = Number(body.limit ?? 5);
   body.limit = Number.isFinite(limit) ? Math.min(8, Math.max(1, Math.round(limit))) : 5;
+}
+
+function validateMaterialExpandRequest(body) {
+  if (!body || typeof body !== "object") {
+    const error = new Error("请求参数缺失。");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  if (!String(body.sectionTitle ?? "").trim()) {
+    const error = new Error("缺少素材板块名称。");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  if (!Array.isArray(body.existingItems)) {
+    const error = new Error("缺少已有素材列表。");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  body.sectionTitle = String(body.sectionTitle).trim();
+  body.existingItems = body.existingItems.map((i) => String(i).trim()).filter(Boolean);
+}
+
+function validateTemplateRefreshRequest(body) {
+  if (!body || typeof body !== "object") {
+    const error = new Error("请求参数缺失。");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  if (!body.template || typeof body.template !== "object") {
+    const error = new Error("缺少模板信息。");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const template = body.template;
+
+  if (!String(template.id ?? "").trim()) {
+    const error = new Error("缺少模板 ID。");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  if (!String(template.name ?? "").trim()) {
+    const error = new Error("缺少模板名称。");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  if (!Array.isArray(template.steps) || template.steps.length === 0) {
+    const error = new Error("模板步骤不能为空。");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  template.steps = template.steps.map((s) => String(s).trim()).filter(Boolean);
+  template.scenario = String(template.scenario ?? "").trim();
+  template.opener = String(template.opener ?? "").trim();
+  template.platforms = Array.isArray(template.platforms) ? template.platforms : [];
 }
 
 export function sendJson(res, statusCode, data) {

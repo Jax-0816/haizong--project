@@ -257,6 +257,40 @@ a {
   box-shadow: 0 10px 24px rgba(0, 102, 204, 0.08);
 }
 
+.industry-switcher {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.industry-switch {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  border: 1px solid transparent;
+  border-radius: 9999px;
+  background: transparent;
+  color: var(--text-secondary);
+  padding: 0 14px;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.2;
+  cursor: pointer;
+}
+
+.industry-switch:hover {
+  background: rgba(255, 255, 255, 0.76);
+  color: var(--text);
+}
+
+.industry-switch.active {
+  border-color: rgba(0, 102, 204, 0.1);
+  background: var(--surface-selected);
+  color: var(--blue);
+  box-shadow: 0 10px 24px rgba(0, 102, 204, 0.08);
+}
+
 .nav-auth {
   display: inline-flex;
   align-items: center;

@@ -438,3 +438,155 @@ function escapeControlCharsInJsonStrings(value) {
 
   return output;
 }
+
+export async function refreshScriptTemplate({ template, industry }) {
+  const apiKey = requireEnv("DEEPSEEK_API_KEY", "缺少 DEEPSEEK_API_KEY，请在 .env.local 中配置 DeepSeek API Key。");
+  const baseUrl = (process.env.DEEPSEEK_BASE_URL || DEFAULT_BASE_URL).replace(/\/$/, "");
+  const model = process.env.DEEPSEEK_MODEL || DEFAULT_MODEL;
+  const industryLabel = getIndustryLabel(industry);
+
+  const response = await fetch(`${baseUrl}/chat/completions`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model,
+      temperature: 0.7,
+      response_format: { type: "json_object" },
+      messages: [
+        {
+          role: "system",
+          content: `你是一个${industryLabel}B端自媒体短视频编导。你需要为已有的脚本模板生成全新的文案内容，保持相同的模板结构和步骤数量，但换用全新的角度、场景和表达。只返回 JSON。`,
+        },
+        {
+          role: "user",
+          content: buildScriptRefreshPrompt({ template, industryLabel }),
+        },
+      ],
+    }),
+  });
+
+  if (!response.ok) {
+    const detail = await response.text();
+    const error = new Error(`大模型请求失败：${response.status} ${detail}`);
+    error.statusCode = 502;
+    throw error;
+  }
+
+  const payload = await response.json();
+  const content = payload?.choices?.[0]?.message?.content;
+
+  if (!content) {
+    const error = new Error("大模型没有返回可解析内容。");
+    error.statusCode = 502;
+    throw error;
+  }
+
+  return parseModelJson(content);
+}
+
+function buildScriptRefreshPrompt({ template, industryLabel }) {
+  const stepCount = template.steps.length;
+
+  return JSON.stringify(
+    {
+      task: `请为以下"${template.name}"脚本模板生成一套全新的文案内容。保持相同的模板结构（${stepCount} 个步骤）、相同的步骤数量和逻辑框架，但换用全新的话题角度、场景切入和文案表达。`,
+      currentTemplate: {
+        name: template.name,
+        scenario: template.scenario,
+        steps: template.steps,
+        opener: template.opener,
+        platforms: template.platforms,
+      },
+      outputSchema: {
+        scenario: "新适用场景，一句话说明，20字以内",
+        steps: template.steps.map((_, i) => `第${i + 1}步新文案，15字以内`),
+        opener: "新开头钩子，30字以内，保留B端经营口吻",
+      },
+      rules: [
+        "只输出 JSON，不要 Markdown。",
+        `steps 必须恰好 ${stepCount} 条，不多不少。`,
+        "新内容必须围绕 B 端经营价值（成本、毛利、效率、供应链、门店运营）。",
+        `内容必须适配${industryLabel}行业，不要混入其他品类。`,
+        "不要换模板名称和平台信息，只刷新 scenario、steps 和 opener。",
+        "新文案要和原内容完全不同，换角度、换场景、换表达。",
+        "保持专业直接的口吻，不要过度营销。",
+      ],
+    },
+    null,
+    2,
+  );
+}
+
+export async function expandMaterialPhrases({ sectionTitle, existingItems, industry }) {
+  const apiKey = requireEnv("DEEPSEEK_API_KEY", "缺少 DEEPSEEK_API_KEY，请在 .env.local 中配置 DeepSeek API Key。");
+  const baseUrl = (process.env.DEEPSEEK_BASE_URL || DEFAULT_BASE_URL).replace(/\/$/, "");
+  const model = process.env.DEEPSEEK_MODEL || DEFAULT_MODEL;
+  const industryLabel = getIndustryLabel(industry);
+
+  const response = await fetch(`${baseUrl}/chat/completions`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model,
+      temperature: 0.8,
+      response_format: { type: "json_object" },
+      messages: [
+        {
+          role: "system",
+          content: `你是一个${industryLabel}B端自媒体内容编辑。你需要为素材库的"${sectionTitle}"板块补充全新的金句表达。每条金句15-40字，短促有力、适合短视频口播，必须服务B端经营价值。不要重复已有金句。只返回 JSON。`,
+        },
+        {
+          role: "user",
+          content: buildMaterialExpandPrompt({ sectionTitle, existingItems, industryLabel }),
+        },
+      ],
+    }),
+  });
+
+  if (!response.ok) {
+    const detail = await response.text();
+    const error = new Error(`大模型请求失败：${response.status} ${detail}`);
+    error.statusCode = 502;
+    throw error;
+  }
+
+  const payload = await response.json();
+  const content = payload?.choices?.[0]?.message?.content;
+
+  if (!content) {
+    const error = new Error("大模型没有返回可解析内容。");
+    error.statusCode = 502;
+    throw error;
+  }
+
+  return parseModelJson(content);
+}
+
+function buildMaterialExpandPrompt({ sectionTitle, existingItems, industryLabel }) {
+  return JSON.stringify(
+    {
+      task: `请为${industryLabel}素材库的"${sectionTitle}"板块生成 5 条全新的金句表达。每条金句要短促有力（15-40字），适合短视频口播，围绕B端经营逻辑（成本、利润、供应链、门店运营、采购决策）。`,
+      existingItems,
+      outputSchema: {
+        items: ["新金句1", "新金句2", "新金句3", "新金句4", "新金句5"],
+      },
+      rules: [
+        "只输出 JSON，不要 Markdown。",
+        "items 必须恰好 5 条。",
+        "每条 15-40 字，短促有力。",
+        "不要重复 existingItems 中已有的表达。",
+        "新金句必须不同于已有内容，换角度、换切入点。",
+        "必须服务 B 端经营价值，不要写普通消费者种草内容。",
+        `内容必须适配${industryLabel}行业。`,
+      ],
+    },
+    null,
+    2,
+  );
+}

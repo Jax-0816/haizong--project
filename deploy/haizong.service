@@ -1,0 +1,57 @@
+# ============================================================
+# 海哥内容工作台 — systemd 服务文件
+# ============================================================
+# 放置路径：/etc/systemd/system/haizong.service
+# 启用自启：systemctl enable --now haizong
+# 查看状态：systemctl status haizong
+# 查看日志：journalctl -u haizong -f
+# ============================================================
+
+[Unit]
+Description=海哥自媒体内容工作台
+Documentation=https://github.com/your-org/haizong
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+
+# 运行用户（部署时创建：useradd -m -s /bin/bash haizong）
+User=haizong
+Group=haizong
+
+# 工作目录
+WorkingDirectory=/opt/haizong-workbench
+
+# 启动命令
+ExecStart=/usr/bin/node server/prod.mjs
+
+# 环境变量文件
+EnvironmentFile=-/opt/haizong-workbench/.env.production.local
+
+# 重启策略
+Restart=on-failure
+RestartSec=10
+StartLimitInterval=60
+StartLimitBurst=3
+
+# 日志
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=haizong
+
+# 安全加固
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/opt/haizong-workbench/src/data
+ReadOnlyPaths=/opt/haizong-workbench/dist /opt/haizong-workbench/server /opt/haizong-workbench/public
+# 如果 content.json 位置外移，对应修改上面的 ReadWritePaths
+
+# 资源限制
+LimitNOFILE=65536
+MemoryMax=512M
+
+[Install]
+WantedBy=multi-user.target
