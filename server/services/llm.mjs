@@ -2,6 +2,7 @@ import { requireEnv } from "../config.mjs";
 
 const DEFAULT_BASE_URL = "https://api.deepseek.com";
 const DEFAULT_MODEL = "deepseek-chat";
+const DEFAULT_LLM_TIMEOUT_MS = 30000;
 
 export async function generateResearchInsight({ request, accountContext, sources, industry }) {
   const apiKey = requireEnv("DEEPSEEK_API_KEY", "缺少 DEEPSEEK_API_KEY，请在 .env.local 中配置 DeepSeek API Key。");
@@ -54,29 +55,44 @@ export async function generateTopicCandidates({ request, accountContext, sources
   const apiKey = requireEnv("DEEPSEEK_API_KEY", "缺少 DEEPSEEK_API_KEY，请在 .env.local 中配置 DeepSeek API Key。");
   const baseUrl = (process.env.DEEPSEEK_BASE_URL || DEFAULT_BASE_URL).replace(/\/$/, "");
   const model = process.env.DEEPSEEK_MODEL || DEFAULT_MODEL;
+  const timeoutMs = normalizeTimeout(process.env.DEEPSEEK_TIMEOUT_MS, DEFAULT_LLM_TIMEOUT_MS);
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
-  const response = await fetch(`${baseUrl}/chat/completions`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model,
-      temperature: 0.25,
-      response_format: { type: "json_object" },
-      messages: [
-        {
-          role: "system",
-          content: "你是一个餐饮供应链 B 端自媒体选题策略助手。你必须基于给定搜索来源生成候选选题，不要编造来源、数据、品牌事实或产品优势。只返回 JSON。",
-        },
-        {
-          role: "user",
-          content: buildTopicCandidatePrompt({ request, accountContext, sources, industry }),
-        },
-      ],
-    }),
-  });
+  let response;
+  try {
+    response = await fetch(`${baseUrl}/chat/completions`, {
+      method: "POST",
+      signal: controller.signal,
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model,
+        temperature: 0.25,
+        response_format: { type: "json_object" },
+        messages: [
+          {
+            role: "system",
+            content: "你是一个餐饮供应链 B 端自媒体选题策略助手。你必须基于给定搜索来源生成候选选题，不要编造来源、数据、品牌事实或产品优势。只返回 JSON。",
+          },
+          {
+            role: "user",
+            content: buildTopicCandidatePrompt({ request, accountContext, sources, industry }),
+          },
+        ],
+      }),
+    });
+  } catch (caught) {
+    const isTimeout = caught?.name === "AbortError";
+    const error = new Error(isTimeout ? "大模型生成超时，已改用本地资料生成候选。" : "大模型服务连接失败，已改用本地资料生成候选。");
+    error.statusCode = 502;
+    error.code = isTimeout ? "LLM_TIMEOUT" : "LLM_FETCH_FAILED";
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
 
   if (!response.ok) {
     const detail = await response.text();
@@ -95,6 +111,11 @@ export async function generateTopicCandidates({ request, accountContext, sources
   }
 
   return parseModelJson(content);
+}
+
+function normalizeTimeout(value, fallback) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed >= 1000 ? parsed : fallback;
 }
 
 export async function generateProductionScript({ topic, template, researchNotes, materials }) {

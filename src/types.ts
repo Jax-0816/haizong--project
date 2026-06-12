@@ -144,11 +144,20 @@ export type PromptTemplate = {
   industry?: IndustryId;
 };
 
+export type MaterialImage = {
+  id: string;
+  productName: string;
+  imageUrl: string;
+  fileName: string;
+  uploadedAt: string;
+};
+
 export type MaterialSection = {
   id: string;
   title: string;
   description: string;
   items: string[];
+  images?: MaterialImage[];
   industry?: IndustryId;
 };
 
@@ -329,6 +338,7 @@ export type TopicCandidateGenerateResult = {
   request: TopicCandidateGenerateRequest;
   candidates: GeneratedTopicCandidate[];
   sources: ResearchSource[];
+  warning?: string;
 };
 
 export type TopicRefreshRequest = {

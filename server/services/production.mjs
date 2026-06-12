@@ -83,6 +83,78 @@ export async function generatePublishDraft(body) {
   };
 }
 
+export function saveGeneratedScriptTemplate(body) {
+  const content = readContent();
+  const topic = findTopic(content, body.topicId);
+  const draft = normalizeScriptDraft(body.scriptDraft);
+  const draftParts = [draft.opener, draft.structure, draft.ending, draft.voiceover].filter(Boolean);
+
+  if (draftParts.length === 0) {
+    const error = new Error("脚本内容为空，无法保存到脚本模板。");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const templates = Array.isArray(content.scriptTemplates) ? content.scriptTemplates : [];
+  const sourceTemplate = templates.find((item) => item.id === body.selectedTemplateId);
+  const savedAt = new Date().toISOString();
+  const topicPlatforms = splitPlatforms(topic.platform);
+  const template = {
+    id: nextSavedScriptTemplateId(templates),
+    industry: String(body.industry || topic.industry || "hotpot"),
+    name: `保存脚本：${clampText(topic.title, 28)}`,
+    scenario: [
+      `来源选题：${topic.title}`,
+      `原模板：${sourceTemplate?.name || "未选择"}`,
+      `保存时间：${savedAt}`,
+    ].join("；"),
+    steps: [
+      draft.structure ? `正文结构：${draft.structure}` : "",
+      draft.ending ? `结尾：${draft.ending}` : "",
+      draft.voiceover ? `口播文案：${draft.voiceover}` : "",
+    ].filter(Boolean),
+    opener: draft.opener || draftParts[0],
+    platforms: topicPlatforms.length > 0 ? topicPlatforms : ["通用"],
+  };
+
+  templates.push(template);
+  content.scriptTemplates = templates;
+  writeContent(content);
+
+  return { template };
+}
+
+export function deleteGeneratedScriptTemplate(body) {
+  const content = readContent();
+  const templateId = String(body?.templateId ?? "").trim();
+
+  if (!templateId) {
+    const error = new Error("缺少脚本模板 ID。");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  if (!templateId.startsWith("script-saved-")) {
+    const error = new Error("只能删除从内容生产台保存的脚本。");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const templates = Array.isArray(content.scriptTemplates) ? content.scriptTemplates : [];
+  const existingIndex = templates.findIndex((template) => template.id === templateId);
+
+  if (existingIndex === -1) {
+    const error = new Error("未找到要删除的脚本内容。");
+    error.statusCode = 404;
+    throw error;
+  }
+
+  content.scriptTemplates = templates.filter((template) => template.id !== templateId);
+  writeContent(content);
+
+  return { templateId };
+}
+
 function normalizeProduction(production) {
   const topicId = String(production.topicId ?? "").trim();
   if (!topicId) {
@@ -132,6 +204,15 @@ function normalizeProduction(production) {
       optimization: String(production.reviewDraft?.optimization ?? ""),
     },
     updatedAt: String(production.updatedAt ?? ""),
+  };
+}
+
+function normalizeScriptDraft(scriptDraft = {}) {
+  return {
+    opener: String(scriptDraft.opener ?? "").trim(),
+    structure: String(scriptDraft.structure ?? "").trim(),
+    ending: String(scriptDraft.ending ?? "").trim(),
+    voiceover: String(scriptDraft.voiceover ?? "").trim(),
   };
 }
 
@@ -198,6 +279,19 @@ function nextReviewId(reviews) {
     return match ? Math.max(currentMax, Number(match[1])) : currentMax;
   }, 0);
   return `review-${String(max + 1).padStart(3, "0")}`;
+}
+
+function nextSavedScriptTemplateId(templates) {
+  const max = templates.reduce((currentMax, template) => {
+    const match = String(template.id ?? "").match(/^script-saved-(\d+)$/);
+    return match ? Math.max(currentMax, Number(match[1])) : currentMax;
+  }, 0);
+  return `script-saved-${String(max + 1).padStart(3, "0")}`;
+}
+
+function clampText(value, maxLength) {
+  const text = String(value ?? "").trim();
+  return text.length > maxLength ? `${text.slice(0, maxLength)}...` : text;
 }
 
 function splitPlatforms(value) {

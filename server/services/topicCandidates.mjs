@@ -31,31 +31,48 @@ export async function generateCandidates(request) {
   const content = readContent();
   const industry = normalizeIndustryId(request.industry);
   const profile = getIndustryProfile(content, industry);
-  const sources = await searchWeb({
-    query: buildCandidateSearchQuery(request, profile),
-    freshness: request.freshness,
-  });
+  const warnings = [];
+  let sources = [];
 
-  const modelResult = await generateTopicCandidates({
-    request,
-    industry,
-    accountContext: {
-      industryProfile: profile,
-      positioning: content.positioning,
-      columns: content.columns,
-      materials: content.materials,
-      recentHotspots: content.hotspots,
-      existingTopics: content.topics.map((topic) => ({
-        title: topic.title,
-        topicCategory: topic.topicCategory,
-        column: topic.column,
-        targetUser: topic.targetUser,
-      })),
-    },
-    sources,
-  });
+  try {
+    sources = await searchWeb({
+      query: buildCandidateSearchQuery(request, profile),
+      freshness: request.freshness,
+    });
+  } catch (caught) {
+    warnings.push(normalizeExternalErrorMessage(caught, "联网搜索失败，已改用本地资料生成候选。"));
+    console.warn("[topic-candidates] search failed, fallback to local context:", caught?.message ?? caught);
+  }
 
-  return normalizeCandidateResult({ request, sources, modelResult });
+  let modelResult;
+  const accountContext = {
+    industryProfile: profile,
+    positioning: content.positioning,
+    columns: content.columns,
+    materials: content.materials,
+    recentHotspots: content.hotspots,
+    existingTopics: content.topics.map((topic) => ({
+      title: topic.title,
+      topicCategory: topic.topicCategory,
+      column: topic.column,
+      targetUser: topic.targetUser,
+    })),
+  };
+
+  try {
+    modelResult = await generateTopicCandidates({
+      request,
+      industry,
+      accountContext,
+      sources,
+    });
+  } catch (caught) {
+    warnings.push(normalizeExternalErrorMessage(caught, "大模型生成失败，已改用本地资料生成候选。"));
+    console.warn("[topic-candidates] llm failed, fallback to local candidates:", caught?.message ?? caught);
+    modelResult = buildLocalCandidateResult({ request, content, industry, profile });
+  }
+
+  return normalizeCandidateResult({ request, sources, modelResult, warnings });
 }
 
 export async function refreshCandidates(filters) {
@@ -129,7 +146,7 @@ function buildCandidateSearchQuery(request, profile) {
   );
 }
 
-function normalizeCandidateResult({ request, sources, modelResult }) {
+function normalizeCandidateResult({ request, sources, modelResult, warnings = [] }) {
   const sourceUrlSet = new Set(sources.map((source) => source.url));
   const rawCandidates = Array.isArray(modelResult.candidates) ? modelResult.candidates : [];
   const existingTitleSet = new Set(readContent().topics.map((topic) => normalizeTitleKey(topic.title)));
@@ -172,7 +189,81 @@ function normalizeCandidateResult({ request, sources, modelResult }) {
       })
       .slice(0, request.limit),
     sources,
+    warning: warnings.filter(Boolean).join(" "),
   };
+}
+
+function buildLocalCandidateResult({ request, content, industry, profile }) {
+  const industryLabel = profile?.label ?? (industry === "bbq" ? "烧烤" : "火锅");
+  const targetUser = String(request.targetUser ?? content.positioning?.audience ?? `${industryLabel}店老板`).trim();
+  const category = normalizeCategory(request.category);
+  const column = String(request.column ?? getTopicColumnFallback(content, industry)).trim();
+  const query = String(request.query ?? "").trim();
+  const materialTitles = Array.isArray(content.materials)
+    ? content.materials
+        .filter((section) => !section.industry || section.industry === industry)
+        .map((section) => section.title)
+        .slice(0, 4)
+    : [];
+  const baseTopics = [
+    {
+      title: `${targetUser}近期选品，先避开这3个高损耗坑`,
+      painPoint: "门店想追热点上新品，但担心备货复杂、损耗上升、后厨执行不稳定。",
+      angle: "从经营避坑切入，把选品判断拆成损耗、出餐、复购三个标准。",
+      coreView: "选题先看能不能帮门店稳定赚钱，不是只看名字和流量热度。",
+      businessLink: `结合${materialTitles.join("、") || `${industryLabel}食材供应链`}，给门店提供更稳的备货和搭配建议。`,
+      format: "避坑型口播",
+    },
+    {
+      title: `${industryLabel}店做爆品，别只换名字，要先算清这4笔账`,
+      painPoint: "老板容易把爆品理解成新奇名字，忽略毛利、出餐效率和复购承接。",
+      angle: "用算账逻辑拆解爆品打造，让内容更贴近 B 端经营决策。",
+      coreView: "真正能长期跑的爆品，必须同时满足好出、好卖、好复购、好管理。",
+      businessLink: `从供应链稳定性、产品规格和组合套餐角度，承接${column}方向。`,
+      format: "清单型图文/口播",
+    },
+    {
+      title: `${query || `${industryLabel}近期经营热点`}，门店老板真正该关注的是后厨能不能接住`,
+      painPoint: "热点来了以后，门店容易盲目跟风，最后形成库存压力和出品波动。",
+      angle: "把外部热点拉回门店后厨执行，强调标准化和供应链稳定。",
+      coreView: "热点只负责吸引注意力，能不能变成复购，取决于后厨稳定交付。",
+      businessLink: `关联${industryLabel}食材标准化、备货节奏和门店出餐效率。`,
+      format: "观点型短视频",
+    },
+    {
+      title: `${targetUser}做内容，不要只拍产品，要拍清楚顾客为什么愿意复购`,
+      painPoint: "内容容易停留在展示产品，缺少门店经营价值和复购逻辑。",
+      angle: "把产品卖点转成门店复购理由，适合做系列化内容。",
+      coreView: "B 端内容要让老板看到经营结果，而不是只看到一个食材名称。",
+      businessLink: `用${materialTitles[0] || `${industryLabel}供应链产品`}作为案例，说明稳定供应和标准出品的价值。`,
+      format: "系列化口播",
+    },
+  ];
+
+  return {
+    candidates: baseTopics.slice(0, clampRefreshLimit(request.limit)).map((item) => ({
+      ...item,
+      industry,
+      topicCategory: category,
+      targetUser,
+      hotSource: "本地资料兜底生成，未使用实时搜索来源",
+      platform: "抖音/视频号",
+      sourceUrls: [],
+      recommendationScore: 52,
+      risks: [
+        "当前候选未引用实时搜索来源，需要人工确认热点真实性。",
+        "建议补充门店案例、产品资料或最新行业数据后再确认入池。",
+      ],
+    })),
+  };
+}
+
+function normalizeExternalErrorMessage(error, fallback) {
+  const message = String(error?.message ?? "").trim();
+  if (!message || message === "fetch failed" || message === "terminated") {
+    return fallback;
+  }
+  return message;
 }
 
 function normalizeTopicForStorage(candidate, content) {

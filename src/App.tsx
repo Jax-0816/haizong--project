@@ -11,11 +11,14 @@ import {
   LayoutDashboard,
   Library,
   Loader2,
+  Save,
   Search,
   Sparkles,
   Trash2,
+  Upload,
+  X,
 } from "lucide-react";
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type ChangeEvent, type FormEvent } from "react";
 import data from "./data/content.json";
 import { activeIndustryStorageKey, adaptIndustryText, defaultIndustryId, getIndustryProfile, normalizeIndustryId } from "./industry";
 import type {
@@ -24,6 +27,7 @@ import type {
   HotspotOpportunity,
   ContentProduction,
   IterationSuggestion,
+  MaterialImage,
   MaterialSection,
   PriorityTopic,
   PromptTemplate,
@@ -42,9 +46,9 @@ import type {
   ScriptTemplate,
 } from "./types";
 
-type ViewId = "dashboard" | "topics" | "production" | "research" | "scripts" | "prompts" | "materials" | "reviews";
+type ViewId = "dashboard" | "topics" | "production" | "research" | "scripts" | "prompts" | "materials" | "reviews" | "accounts";
 
-const navItems: Array<{ id: ViewId; label: string; icon: typeof LayoutDashboard }> = [
+const navItems: Array<{ id: ViewId; label: string; icon: typeof LayoutDashboard; adminOnly?: boolean }> = [
   { id: "dashboard", label: "首页概览", icon: LayoutDashboard },
   { id: "topics", label: "选题池", icon: Library },
   { id: "production", label: "内容生产台", icon: Clapperboard },
@@ -53,6 +57,7 @@ const navItems: Array<{ id: ViewId; label: string; icon: typeof LayoutDashboard 
   { id: "prompts", label: "提示词库", icon: Sparkles },
   { id: "materials", label: "素材库", icon: Boxes },
   { id: "reviews", label: "发布复盘", icon: BarChart3 },
+  { id: "accounts", label: "账号管理", icon: Clipboard, adminOnly: true },
 ];
 
 const viewDescriptions: Record<ViewId, string> = {
@@ -64,6 +69,7 @@ const viewDescriptions: Record<ViewId, string> = {
   prompts: "统一维护提示词资产，方便复制和迭代。",
   materials: "管理产品、案例和拍摄素材，支撑内容生产效率。",
   reviews: "回看发布数据与结论，把表现反馈进下一轮选题。",
+  accounts: "管理员查看账号状态，并删除不再使用的账号。",
 };
 
 const statusOrder: ScriptStatus[] = ["未写", "已写", "已拍", "已发"];
@@ -116,6 +122,16 @@ const emptyProduction = (topicId: string, industry: IndustryId = defaultTopicInd
 });
 
 const formatNumber = (value: number) => new Intl.NumberFormat("zh-CN").format(value);
+const formatDateTime = (value: string) => {
+  if (!value) {
+    return "-";
+  }
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return "-";
+  }
+  return date.toLocaleString("zh-CN");
+};
 
 const industryProfiles = data.industryProfiles as IndustryProfile[];
 const defaultProfile = industryProfiles[0] ?? null;
@@ -237,21 +253,36 @@ type DashboardAiState = {
 
 type AuthSession = {
   token: string;
+  phone: string;
   username: string;
   displayName: string;
+  role: "admin" | "member";
+  status: "active" | "deleted";
   loginAt: string;
   expiresAt: string;
-  authMode: "local" | "remote";
+  authMode: "server";
+};
+
+type AuthUser = {
+  id: string;
+  phone: string;
+  username: string;
+  displayName: string;
+  role: "admin" | "member";
+  status: "active" | "deleted";
+  createdAt: string;
+  lastLoginAt: string;
 };
 
 type AppAuthApi = {
   getSession: () => AuthSession | null;
-  logout: (options?: { redirect?: boolean; redirectTo?: string }) => void;
+  logout: (options?: { redirect?: boolean; redirectTo?: string }) => void | Promise<void>;
 };
 
 declare global {
   interface Window {
     AppAuth?: AppAuthApi;
+    __APP_VERSION__?: string;
   }
 }
 
@@ -319,6 +350,10 @@ function App() {
   });
   const [copiedPromptId, setCopiedPromptId] = useState("");
   const [topics, setTopics] = useState<Topic[]>(() => data.topics as Topic[]);
+  const [scriptTemplates, setScriptTemplates] = useState<ScriptTemplate[]>(() => data.scriptTemplates as ScriptTemplate[]);
+  const [materials, setMaterials] = useState<Array<MaterialSection & { industry?: IndustryId }>>(
+    () => data.materials as Array<MaterialSection & { industry?: IndustryId }>,
+  );
   const [session, setSession] = useState<AuthSession | null>(() => window.AppAuth?.getSession() ?? null);
   const [productions, setProductions] = useState<ContentProduction[]>(() =>
     Array.isArray((data as { productions?: ContentProduction[] }).productions)
@@ -378,6 +413,10 @@ function App() {
     }));
     return { totalViews, published, needsReview, statusCounts, columnCounts };
   }, [activeIndustryProfile.columns, visibleTopics]);
+  const visibleNavItems = useMemo(
+    () => navItems.filter((item) => !item.adminOnly || session?.role === "admin"),
+    [session?.role],
+  );
 
   const copyPrompt = async (prompt: PromptTemplate, profile: IndustryProfile) => {
     const text = `${adaptIndustryText(prompt.body, profile)}\n\n输出字段：${prompt.outputFields.join("、")}`;
@@ -419,6 +458,12 @@ function App() {
       return { ...current, [activeIndustry]: nextIds };
     });
   }, [activeIndustry, defaultProductionTopicIdsByIndustry, visibleTopics]);
+
+  useEffect(() => {
+    if (activeView === "accounts" && session?.role !== "admin") {
+      setActiveView("dashboard");
+    }
+  }, [activeView, session?.role]);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -502,7 +547,7 @@ function App() {
         </div>
         <div className="sidebar-nav-block">
           <nav className="nav-list nav-list-inline nav-list-sidebar" aria-label="页面切换">
-            {navItems.map((item) => {
+            {visibleNavItems.map((item) => {
               const Icon = item.icon;
               return (
                 <button
@@ -520,8 +565,9 @@ function App() {
           <div className="nav-auth nav-auth-sidebar">
             <div className="nav-user">
               <strong>{session?.displayName ?? "已登录"}</strong>
-              <span>{session?.username ?? "本地账号"}</span>
+              <span>{session?.phone ?? "未识别手机号"} · {session?.role === "admin" ? "管理员" : "成员"}</span>
             </div>
+            <span className="version-badge">v{window.__APP_VERSION__ ?? "0.1.0"}</span>
             <button
               className="nav-button nav-logout-button"
               onClick={() => window.AppAuth?.logout()}
@@ -582,6 +628,7 @@ function App() {
           <ProductionView
             activeIndustry={activeIndustry}
             industryProfile={resolvedIndustryProfile}
+            onScriptTemplateSaved={(template) => setScriptTemplates((current) => [...current, template])}
             onProductionSaved={(production, review, topic) => {
               setProductions((current) => {
                 const existingIndex = current.findIndex((item) => item.topicId === production.topicId);
@@ -607,20 +654,170 @@ function App() {
             productionTopicIds={productionTopicIdsByIndustry[activeIndustry] ?? []}
             productions={productions}
             removeProductionTopic={removeProductionTopic}
+            scriptTemplates={scriptTemplates}
             setProductionTopicId={setProductionTopicId}
             topics={topics}
           />
         ) : null}
 
         {activeView === "research" ? <ResearchView activeIndustry={activeIndustry} industryProfile={resolvedIndustryProfile} /> : null}
-        {activeView === "scripts" ? <ScriptsView activeIndustry={activeIndustry} industryProfile={resolvedIndustryProfile} setActiveIndustry={setActiveIndustry} /> : null}
+        {activeView === "scripts" ? (
+          <ScriptsView
+            activeIndustry={activeIndustry}
+            industryProfile={resolvedIndustryProfile}
+            onScriptTemplateDeleted={(templateId) =>
+              setScriptTemplates((current) => current.filter((template) => template.id !== templateId))
+            }
+            scriptTemplates={scriptTemplates}
+            setActiveIndustry={setActiveIndustry}
+          />
+        ) : null}
         {activeView === "prompts" ? (
           <PromptsView activeIndustry={activeIndustry} copiedPromptId={copiedPromptId} copyPrompt={copyPrompt} industryProfile={resolvedIndustryProfile} />
         ) : null}
-        {activeView === "materials" ? <MaterialsView activeIndustry={activeIndustry} industryProfile={resolvedIndustryProfile} /> : null}
+        {activeView === "materials" ? (
+          <MaterialsView
+            activeIndustry={activeIndustry}
+            industryProfile={resolvedIndustryProfile}
+            materials={materials}
+            setMaterials={setMaterials}
+          />
+        ) : null}
         {activeView === "reviews" ? <ReviewsView activeIndustry={activeIndustry} industryProfile={resolvedIndustryProfile} reviews={reviews} /> : null}
+        {activeView === "accounts" && session?.role === "admin" ? <AccountsView session={session} /> : null}
       </main>
     </div>
+  );
+}
+
+function AccountsView({ session }: { session: AuthSession }) {
+  const [users, setUsers] = useState<AuthUser[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [deletingUserId, setDeletingUserId] = useState("");
+  const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
+
+  const loadUsers = async () => {
+    setIsLoading(true);
+    setError("");
+
+    try {
+      const response = await fetch("/api/auth/users", {
+        headers: { Authorization: `Bearer ${session.token}` },
+      });
+      const payload = await parseResearchResponse(response);
+
+      if (!response.ok) {
+        throw new Error(payload.error ?? "账号列表加载失败");
+      }
+
+      setUsers(Array.isArray(payload.users) ? (payload.users as AuthUser[]) : []);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "账号列表加载失败");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadUsers();
+  }, [session.token]);
+
+  const deleteUser = async (user: AuthUser) => {
+    const confirmed = window.confirm(`确定删除账号 ${user.phone} 吗？删除后该手机号不能再登录。`);
+    if (!confirmed) {
+      return;
+    }
+
+    setDeletingUserId(user.id);
+    setError("");
+    setMessage("");
+
+    try {
+      const response = await fetch("/api/auth/users/delete", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${session.token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ userId: user.id }),
+      });
+      const payload = await parseResearchResponse(response);
+
+      if (!response.ok) {
+        throw new Error(payload.error ?? "删除账号失败");
+      }
+
+      setUsers((current) => current.map((item) => (item.id === user.id ? (payload.user as AuthUser) : item)));
+      setMessage(`账号 ${user.phone} 已删除`);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "删除账号失败");
+    } finally {
+      setDeletingUserId("");
+    }
+  };
+
+  return (
+    <section className="panel account-panel">
+      <div className="section-heading">
+        <div>
+          <h2>账号管理</h2>
+          <span>管理员可查看账号状态，并删除不再使用的普通账号</span>
+        </div>
+        <button className="icon-button" disabled={isLoading} onClick={loadUsers} type="button">
+          {isLoading ? <Loader2 className="spin-icon" size={18} aria-hidden="true" /> : <Search size={18} aria-hidden="true" />}
+          <span>{isLoading ? "加载中" : "刷新"}</span>
+        </button>
+      </div>
+
+      {error ? <div className="research-error">{error}</div> : null}
+      {message ? <div className="topic-confirm-message">{message}</div> : null}
+
+      <div className="table-scroll">
+        <table className="account-table">
+          <thead>
+            <tr>
+              <th>手机号</th>
+              <th>昵称</th>
+              <th>角色</th>
+              <th>状态</th>
+              <th>创建时间</th>
+              <th>最近登录</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            {users.map((user) => {
+              const isSelf = user.id === session.username || user.phone === session.phone;
+              const canDelete = user.role !== "admin" && user.status === "active" && !isSelf;
+              return (
+                <tr key={user.id}>
+                  <td>{user.phone}</td>
+                  <td>{user.displayName}</td>
+                  <td>{user.role === "admin" ? "管理员" : "成员"}</td>
+                  <td>{user.status === "active" ? "正常" : "已删除"}</td>
+                  <td>{formatDateTime(user.createdAt)}</td>
+                  <td>{formatDateTime(user.lastLoginAt)}</td>
+                  <td>
+                    <button
+                      className="icon-button danger account-delete-button"
+                      disabled={!canDelete || deletingUserId === user.id}
+                      onClick={() => deleteUser(user)}
+                      type="button"
+                    >
+                      {deletingUserId === user.id ? <Loader2 className="spin-icon" size={14} aria-hidden="true" /> : <Trash2 size={14} aria-hidden="true" />}
+                      <span>{deletingUserId === user.id ? "删除中" : "删除"}</span>
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      {!isLoading && users.length === 0 ? <p className="empty-text">暂无账号记录。</p> : null}
+    </section>
   );
 }
 
@@ -1210,7 +1407,9 @@ function TopicsView({
         throw new Error(payload.error ?? "联网选题生成失败");
       }
 
-      setCandidateResult(payload as TopicCandidateGenerateResult);
+      const result = payload as TopicCandidateGenerateResult;
+      setCandidateResult(result);
+      setCandidateMessage(result.warning ? `已降级生成：${result.warning}` : "");
     } catch (caught) {
       setCandidateError(caught instanceof Error ? caught.message : "联网选题生成失败");
     } finally {
@@ -1244,7 +1443,9 @@ function TopicsView({
         throw new Error(result.error ?? "选题重调研失败");
       }
 
-      setRefreshResult(result as TopicCandidateGenerateResult);
+      const candidateResultPayload = result as TopicCandidateGenerateResult;
+      setRefreshResult(candidateResultPayload);
+      setRefreshMessage(candidateResultPayload.warning ? `已降级生成：${candidateResultPayload.warning}` : "");
       setRefreshMessage("已完成本轮联网重调研，请确认候选后再入池。");
     } catch (caught) {
       const message = caught instanceof Error ? caught.message : "选题重调研失败";
@@ -1599,21 +1800,25 @@ function TopicsView({
 function ProductionView({
   activeIndustry,
   industryProfile,
+  onScriptTemplateSaved,
   onProductionSaved,
   productionTopicId,
   productionTopicIds,
   productions,
   removeProductionTopic,
+  scriptTemplates,
   setProductionTopicId,
   topics,
 }: {
   activeIndustry: IndustryId;
   industryProfile: IndustryProfile;
+  onScriptTemplateSaved: (template: ScriptTemplate) => void;
   onProductionSaved: (production: ContentProduction, review: ReviewRecord | null, topic: Topic | null) => void;
   productionTopicId: string;
   productionTopicIds: string[];
   productions: ContentProduction[];
   removeProductionTopic: (topicId: string) => void;
+  scriptTemplates: ScriptTemplate[];
   setProductionTopicId: (topicId: string) => void;
   topics: Topic[];
 }) {
@@ -1638,9 +1843,11 @@ function ProductionView({
     setError("");
   }, [activeIndustry, productions, selectedTopic]);
 
+  const availableScriptTemplates = scriptTemplates.filter((template) => !template.industry || template.industry === activeIndustry);
   const selectedTemplate =
-    (data.scriptTemplates as ScriptTemplate[]).find((template) => template.id === production.selectedTemplateId) ??
-    (data.scriptTemplates as ScriptTemplate[])[0];
+    availableScriptTemplates.find((template) => template.id === production.selectedTemplateId) ??
+    availableScriptTemplates[0] ??
+    scriptTemplates[0];
 
   const patchProduction = (patch: Partial<ContentProduction>) => {
     setProduction((current) => ({ ...current, ...patch }));
@@ -1811,7 +2018,47 @@ function ProductionView({
     }
   };
 
+  const saveScriptTemplate = async () => {
+    if (!selectedTopic) {
+      return;
+    }
+    setLoadingAction("saveScriptTemplate");
+    setError("");
+    setMessage("");
+
+    try {
+      const response = await fetch("/api/production/save-script-template", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          topicId: selectedTopic.id,
+          industry: activeIndustry,
+          selectedTemplateId: production.selectedTemplateId,
+          scriptDraft: production.scriptDraft,
+        }),
+      });
+      const payload = await parseResearchResponse(response);
+
+      if (!response.ok) {
+        throw new Error(payload.error ?? "保存脚本内容失败");
+      }
+
+      onScriptTemplateSaved(payload.template as ScriptTemplate);
+      setMessage("脚本内容已保存到脚本模板库");
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "保存脚本内容失败");
+    } finally {
+      setLoadingAction("");
+    }
+  };
+
   const saveCurrentStep = () => saveProduction(production);
+  const hasScriptDraft = [
+    production.scriptDraft.opener,
+    production.scriptDraft.structure,
+    production.scriptDraft.ending,
+    production.scriptDraft.voiceover,
+  ].some((item) => item.trim().length > 0);
 
   return (
     <section className="production-layout">
@@ -1941,7 +2188,7 @@ function ProductionView({
             {production.currentStep === "template" ? (
           <div className="production-section">
             <div className="template-choice-grid">
-              {(data.scriptTemplates as ScriptTemplate[])
+              {availableScriptTemplates
                 .map((template) => ({ ...template, name: adaptIndustryText(template.name, industryProfile), scenario: adaptIndustryText(template.scenario, industryProfile), opener: adaptIndustryText(template.opener, industryProfile) }))
                 .map((template) => (
                 <button
@@ -1976,6 +2223,17 @@ function ProductionView({
             <ProductionTextarea label="正文结构" rows={5} value={production.scriptDraft.structure} onChange={(value) => patchScriptDraft("structure", value)} />
             <ProductionTextarea label="结尾" rows={2} value={production.scriptDraft.ending} onChange={(value) => patchScriptDraft("ending", value)} />
             <ProductionTextarea label="口播文案" rows={10} value={production.scriptDraft.voiceover} onChange={(value) => patchScriptDraft("voiceover", value)} />
+            <div className="production-script-actions">
+              <button
+                className="icon-button secondary"
+                disabled={!hasScriptDraft || loadingAction === "saveScriptTemplate"}
+                onClick={saveScriptTemplate}
+                type="button"
+              >
+                {loadingAction === "saveScriptTemplate" ? <Loader2 className="spin-icon" size={18} aria-hidden="true" /> : <Save size={18} aria-hidden="true" />}
+                <span>{loadingAction === "saveScriptTemplate" ? "保存中" : "保存脚本内容"}</span>
+              </button>
+            </div>
           </div>
             ) : null}
 
@@ -2433,13 +2691,18 @@ function ResearchResultPanel({ result }: { result: ResearchResult | null }) {
 function ScriptsView({
   activeIndustry,
   industryProfile,
+  onScriptTemplateDeleted,
+  scriptTemplates,
   setActiveIndustry,
 }: {
   activeIndustry: IndustryId;
   industryProfile: IndustryProfile;
+  onScriptTemplateDeleted: (templateId: string) => void;
+  scriptTemplates: ScriptTemplate[];
   setActiveIndustry: (id: IndustryId) => void;
 }) {
   const [refreshingTemplateId, setRefreshingTemplateId] = useState<string | null>(null);
+  const [deletingTemplateId, setDeletingTemplateId] = useState<string | null>(null);
   const [templateOverrides, setTemplateOverrides] = useState<Record<string, { scenario: string; steps: string[]; opener: string }>>({});
 
   const industryProfiles = data.industryProfiles as IndustryProfile[];
@@ -2488,7 +2751,38 @@ function ScriptsView({
     };
   };
 
-  const filteredTemplates = (data.scriptTemplates as ScriptTemplate[]).filter(
+  const handleDeleteTemplate = async (template: ScriptTemplate) => {
+    if (!template.id.startsWith("script-saved-")) {
+      return;
+    }
+
+    const confirmed = window.confirm(`确定删除《${template.name}》吗？删除后无法从脚本模板库恢复。`);
+    if (!confirmed) {
+      return;
+    }
+
+    setDeletingTemplateId(template.id);
+    try {
+      const response = await fetch("/api/production/delete-script-template", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ templateId: template.id }),
+      });
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.error ?? `删除失败（${response.status}）`);
+      }
+
+      onScriptTemplateDeleted(template.id);
+    } catch (caught) {
+      alert(caught instanceof Error ? caught.message : "删除失败，请稍后重试");
+    } finally {
+      setDeletingTemplateId(null);
+    }
+  };
+
+  const filteredTemplates = scriptTemplates.filter(
     (template) => !template.industry || template.industry === activeIndustry,
   );
 
@@ -2511,6 +2805,8 @@ function ScriptsView({
         {filteredTemplates.map((template) => {
           const resolved = resolveTemplate(template);
           const isRefreshing = refreshingTemplateId === template.id;
+          const isSavedScript = template.id.startsWith("script-saved-");
+          const isDeleting = deletingTemplateId === template.id;
           return (
         <article className="panel template-card" key={template.id}>
           <div className="section-heading">
@@ -2541,6 +2837,20 @@ function ScriptsView({
             ))}
           </ol>
           <blockquote>{adaptIndustryText(resolved.opener, currentProfile)}</blockquote>
+          {isSavedScript ? (
+            <div className="template-card-actions">
+              <button
+                className="icon-button danger"
+                disabled={isDeleting}
+                onClick={() => handleDeleteTemplate(template)}
+                title="删除保存的脚本内容"
+                type="button"
+              >
+                {isDeleting ? <Loader2 className="spin-icon" size={14} aria-hidden="true" /> : <Trash2 size={14} aria-hidden="true" />}
+                <span>{isDeleting ? "删除中" : "删除"}</span>
+              </button>
+            </div>
+          ) : null}
         </article>
           );
         })}
@@ -2590,16 +2900,149 @@ function PromptsView({
   );
 }
 
+type MaterialImageDraft = MaterialImage & {
+  previewUrl: string;
+  dataUrl?: string;
+};
+
+function readImageFileAsDraft(file: File): Promise<MaterialImageDraft> {
+  if (!["image/jpeg", "image/png", "image/webp", "image/gif"].includes(file.type)) {
+    return Promise.reject(new Error("仅支持 jpg、png、webp、gif 图片。"));
+  }
+
+  if (file.size > 5 * 1024 * 1024) {
+    return Promise.reject(new Error("单张图片不能超过 5MB。"));
+  }
+
+  return new Promise((resolveDraft, rejectDraft) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = String(reader.result ?? "");
+      const productName = file.name.replace(/\.[^.]+$/, "").trim() || "未命名产品";
+      resolveDraft({
+        id: `draft-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        productName,
+        imageUrl: "",
+        previewUrl: dataUrl,
+        dataUrl,
+        fileName: file.name,
+        uploadedAt: new Date().toISOString(),
+      });
+    };
+    reader.onerror = () => rejectDraft(new Error("图片读取失败，请换一张图片重试。"));
+    reader.readAsDataURL(file);
+  });
+}
+
 function MaterialsView({
   activeIndustry,
   industryProfile,
+  materials,
+  setMaterials,
 }: {
   activeIndustry: IndustryId;
   industryProfile: IndustryProfile;
+  materials: Array<MaterialSection & { industry?: IndustryId }>;
+  setMaterials: (materials: Array<MaterialSection & { industry?: IndustryId }>) => void;
 }) {
   const [expandedItems, setExpandedItems] = useState<Record<string, string[]>>({});
   const [loadingSectionId, setLoadingSectionId] = useState<string | null>(null);
   const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({});
+  const [editingSection, setEditingSection] = useState<(MaterialSection & { industry?: IndustryId }) | null>(null);
+  const [draftImages, setDraftImages] = useState<MaterialImageDraft[]>([]);
+  const [saveError, setSaveError] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+
+  const editableMaterialTitles = new Set(["案例素材", "烧烤门店经营素材"]);
+
+  const openMaterialEditor = (section: MaterialSection & { industry?: IndustryId }) => {
+    setEditingSection(section);
+    setDraftImages((section.images ?? []).map((image) => ({ ...image, previewUrl: image.imageUrl })));
+    setSaveError("");
+  };
+
+  const closeMaterialEditor = () => {
+    if (isSaving) {
+      return;
+    }
+    setEditingSection(null);
+    setDraftImages([]);
+    setSaveError("");
+  };
+
+  const handleImageFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files ?? []);
+    event.target.value = "";
+    if (files.length === 0) {
+      return;
+    }
+
+    setSaveError("");
+
+    try {
+      const nextImages = await Promise.all(files.map(readImageFileAsDraft));
+      setDraftImages((current) => [...current, ...nextImages]);
+    } catch (caught) {
+      setSaveError(caught instanceof Error ? caught.message : "图片读取失败，请换一张图片重试。");
+    }
+  };
+
+  const updateDraftImageName = (index: number, productName: string) => {
+    setDraftImages((current) => current.map((image, imageIndex) => (imageIndex === index ? { ...image, productName } : image)));
+  };
+
+  const removeDraftImage = (index: number) => {
+    setDraftImages((current) => current.filter((_, imageIndex) => imageIndex !== index));
+  };
+
+  const saveMaterialSection = async () => {
+    if (!editingSection) {
+      return;
+    }
+
+    const hasMissingName = draftImages.some((image) => !image.productName.trim());
+    if (hasMissingName) {
+      setSaveError("每张图片都需要填写产品名称。");
+      return;
+    }
+
+    setIsSaving(true);
+    setSaveError("");
+
+    try {
+      const saveResponse = await fetch("/api/materials/image-assets", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sectionId: editingSection.id,
+          images: draftImages.map((image) => ({
+            id: image.id,
+            productName: image.productName.trim(),
+            imageUrl: image.imageUrl,
+            fileName: image.fileName,
+            uploadedAt: image.uploadedAt,
+            dataUrl: image.dataUrl,
+          })),
+        }),
+      });
+
+      if (!saveResponse.ok) {
+        const payload = await saveResponse.json().catch(() => null);
+        throw new Error(payload?.error ?? `保存失败（${saveResponse.status}）`);
+      }
+
+      const result = await saveResponse.json();
+      if (Array.isArray(result.materials)) {
+        setMaterials(result.materials);
+      }
+      setEditingSection(null);
+      setDraftImages([]);
+    } catch (caught) {
+      setSaveError(caught instanceof Error ? caught.message : "保存失败，请稍后重试。");
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   const handleLoadMore = async (section: MaterialSection & { industry?: IndustryId }) => {
     setLoadingSectionId(section.id);
@@ -2651,8 +3094,9 @@ function MaterialsView({
   };
 
   return (
+    <>
     <section className="template-grid">
-      {(data.materials as Array<MaterialSection & { industry?: IndustryId }>)
+      {materials
         .filter((section) => !section.industry || section.industry === activeIndustry)
         .map((section) => {
           const items = resolveItems(section);
@@ -2661,6 +3105,7 @@ function MaterialsView({
           const hasExtra = extraCount > 0;
           const visibleItems = hasExtra && isCollapsed ? section.items : items;
           const isLoading = loadingSectionId === section.id;
+          const isEditableMaterial = editableMaterialTitles.has(section.title);
           return (
         <article className="panel material-card" key={section.id}>
           <div className="section-heading">
@@ -2673,37 +3118,129 @@ function MaterialsView({
               <li key={item}>{adaptIndustryText(item, industryProfile)}</li>
             ))}
           </ul>
-          <div style={{ display: "flex", gap: "8px", marginTop: "8px" }}>
+          {isEditableMaterial && section.images?.length ? (
+            <div className="material-image-grid">
+              {section.images.map((image) => (
+                <figure className="material-image-card" key={image.id}>
+                  <img alt={image.productName} src={image.imageUrl} />
+                  <figcaption>{image.productName}</figcaption>
+                </figure>
+              ))}
+            </div>
+          ) : null}
+          <div className="material-actions">
             {hasExtra ? (
               <button
                 className="ghost-button"
                 onClick={() => toggleCollapse(section.id)}
-                style={{ flex: 1, minHeight: "36px", borderRadius: "12px" }}
                 type="button"
               >
                 <span>{isCollapsed ? `展开 (${extraCount}条)` : "收起"}</span>
               </button>
             ) : null}
-            <button
-              className="ghost-button"
-              disabled={isLoading}
-              onClick={() => handleLoadMore(section)}
-              style={{ flex: 1, minHeight: "36px", borderRadius: "12px" }}
-              title="AI 生成更多内容"
-              type="button"
-            >
-              {isLoading ? (
-                <Loader2 className="spin-icon" size={14} aria-hidden="true" />
-              ) : (
-                <Sparkles size={14} aria-hidden="true" />
-              )}
-              <span>{isLoading ? "生成中" : "加载更多"}</span>
-            </button>
+            {isEditableMaterial ? (
+              <button
+                className="ghost-button"
+                onClick={() => openMaterialEditor(section)}
+                title="上传并编辑本地素材"
+                type="button"
+              >
+                <Upload size={14} aria-hidden="true" />
+                <span>上传本地资料</span>
+              </button>
+            ) : (
+              <button
+                className="ghost-button"
+                disabled={isLoading}
+                onClick={() => handleLoadMore(section)}
+                title="AI 生成更多内容"
+                type="button"
+              >
+                {isLoading ? (
+                  <Loader2 className="spin-icon" size={14} aria-hidden="true" />
+                ) : (
+                  <Sparkles size={14} aria-hidden="true" />
+                )}
+                <span>{isLoading ? "生成中" : "加载更多"}</span>
+              </button>
+            )}
           </div>
         </article>
           );
         })}
     </section>
+    {editingSection ? (
+      <div className="material-editor-backdrop" role="presentation" onMouseDown={closeMaterialEditor}>
+        <section
+          aria-labelledby="material-editor-title"
+          aria-modal="true"
+          className="material-editor-dialog"
+          onMouseDown={(event) => event.stopPropagation()}
+          role="dialog"
+        >
+          <div className="section-heading">
+            <div>
+              <h2 id="material-editor-title">{adaptIndustryText(editingSection.title, industryProfile)}</h2>
+              <span>上传图片资料，并为每张图片填写产品名称</span>
+            </div>
+            <button className="icon-button" onClick={closeMaterialEditor} title="关闭" type="button">
+              <X size={18} aria-hidden="true" />
+              <span>关闭</span>
+            </button>
+          </div>
+
+          <div className="material-upload-panel">
+            <label className="material-file-button">
+              <Upload size={16} aria-hidden="true" />
+              <span>选择图片</span>
+              <input accept="image/jpeg,image/png,image/webp,image/gif" multiple onChange={handleImageFileChange} type="file" />
+            </label>
+            <p>支持 jpg、png、webp、gif，单张不超过 5MB。选择后先预览，点击保存后写入素材库。</p>
+          </div>
+
+          <div className="material-editor-list" aria-label="图片素材编辑列表">
+            {draftImages.length > 0 ? (
+              draftImages.map((image, index) => (
+              <div className="material-editor-row" key={image.id}>
+                <img alt={image.productName || "待命名图片素材"} src={image.previewUrl} />
+                <label>
+                  <span>产品名称</span>
+                  <input
+                    aria-label={`产品名称 ${index + 1}`}
+                    onChange={(event) => updateDraftImageName(index, event.target.value)}
+                    placeholder="填写产品名称"
+                    value={image.productName}
+                  />
+                </label>
+                <button className="icon-button danger" onClick={() => removeDraftImage(index)} title="删除图片" type="button">
+                  <Trash2 size={16} aria-hidden="true" />
+                  <span>删除</span>
+                </button>
+              </div>
+              ))
+            ) : (
+              <div className="material-editor-empty">
+                <strong>还没有图片资料</strong>
+                <span>点击上方“选择图片”上传本地产品图、门店图或案例图。</span>
+              </div>
+            )}
+          </div>
+
+          {saveError ? <p className="material-editor-error">{saveError}</p> : null}
+
+          <div className="material-editor-footer">
+            <button className="command-button ghost" disabled={isSaving} onClick={closeMaterialEditor} type="button">
+              取消
+            </button>
+            <button className="command-button primary" disabled={isSaving} onClick={saveMaterialSection} type="button">
+              {isSaving ? <Loader2 className="spin-icon" size={16} aria-hidden="true" /> : <Save size={16} aria-hidden="true" />}
+              <span>{isSaving ? "保存中" : "保存素材"}</span>
+            </button>
+          </div>
+        </section>
+      </div>
+    ) : null}
+    </>
   );
 }
 

@@ -3,6 +3,9 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
     <title>登录 | 海哥自媒体账号内容工作台</title>
     <script src="/app-config.js"></script>
     <script src="/auth.js"></script>
@@ -130,6 +133,29 @@
         box-shadow: 0 0 0 4px rgba(0, 102, 204, 0.14);
       }
 
+      .code-row {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 128px;
+        gap: 10px;
+      }
+
+      .code-button {
+        height: 50px;
+        border: 1px solid rgba(0, 102, 204, 0.18);
+        border-radius: 15px;
+        background: rgba(0, 113, 227, 0.08);
+        color: #0066cc;
+        font: inherit;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+      }
+
+      .code-button:disabled {
+        opacity: 0.62;
+        cursor: wait;
+      }
+
       .submit-button {
         width: 100%;
         height: 52px;
@@ -157,8 +183,7 @@
       }
 
       .hint-row {
-        display: flex;
-        justify-content: space-between;
+        display: grid;
         gap: 12px;
         margin-top: 14px;
         color: #6e6e73;
@@ -188,8 +213,8 @@
           font-size: 30px;
         }
 
-        .hint-row {
-          flex-direction: column;
+        .code-row {
+          grid-template-columns: 1fr;
         }
       }
     </style>
@@ -205,22 +230,25 @@
           </div>
         </div>
         <h1 id="login-title">欢迎回来</h1>
-        <p>登录后进入海哥自媒体账号内容工作台。当前为本地临时账号验证，后续可直接切换到阿里云远程认证接口。</p>
+        <p>使用手机号验证码登录。首次登录会自动注册为普通账号，管理员手机号登录后可管理账号权限。</p>
 
         <form id="login-form" novalidate>
           <div class="field">
-            <label for="username">账号</label>
-            <input id="username" name="username" type="text" autocomplete="username" placeholder="请输入账号" />
+            <label for="phone">手机号</label>
+            <input id="phone" name="phone" type="tel" autocomplete="tel" inputmode="numeric" placeholder="请输入 11 位手机号" />
           </div>
           <div class="field">
-            <label for="password">密码</label>
-            <input id="password" name="password" type="password" autocomplete="current-password" placeholder="请输入密码" />
+            <label for="code">验证码</label>
+            <div class="code-row">
+              <input id="code" name="code" type="text" autocomplete="one-time-code" inputmode="numeric" maxlength="6" placeholder="请输入验证码" />
+              <button class="code-button" id="code-button" type="button">获取验证码</button>
+            </div>
           </div>
           <button class="submit-button" id="submit-button" type="submit">登录并进入主页</button>
           <div class="status" id="status" aria-live="polite"></div>
           <div class="hint-row">
-            <span>默认账号：admin</span>
-            <span>默认密码：123456</span>
+            <span>本地模拟阶段会直接显示测试验证码。</span>
+            <span>默认管理员手机号可通过 AUTH_ADMIN_PHONE 配置。</span>
           </div>
         </form>
       </section>
@@ -230,15 +258,49 @@
       window.AppAuth.redirectIfAuthenticated();
 
       var form = document.getElementById("login-form");
-      var usernameInput = document.getElementById("username");
-      var passwordInput = document.getElementById("password");
+      var phoneInput = document.getElementById("phone");
+      var codeInput = document.getElementById("code");
+      var codeButton = document.getElementById("code-button");
       var submitButton = document.getElementById("submit-button");
       var statusNode = document.getElementById("status");
+      var countdownTimer = null;
 
       function setStatus(message, type) {
         statusNode.textContent = message || "";
         statusNode.className = type === "success" ? "status success" : "status";
       }
+
+      function startCountdown(seconds) {
+        var remaining = seconds;
+        codeButton.disabled = true;
+        codeButton.textContent = remaining + "秒后重试";
+        window.clearInterval(countdownTimer);
+        countdownTimer = window.setInterval(function tick() {
+          remaining -= 1;
+          if (remaining <= 0) {
+            window.clearInterval(countdownTimer);
+            codeButton.disabled = false;
+            codeButton.textContent = "获取验证码";
+            return;
+          }
+          codeButton.textContent = remaining + "秒后重试";
+        }, 1000);
+      }
+
+      codeButton.addEventListener("click", async function handleSendCode() {
+        codeButton.disabled = true;
+        setStatus("");
+
+        try {
+          var result = await window.AppAuth.sendCode(phoneInput.value);
+          codeInput.value = result.devCode || "";
+          setStatus(result.devCode ? "本地测试验证码：" + result.devCode : "验证码已发送。", "success");
+          startCountdown(60);
+        } catch (error) {
+          codeButton.disabled = false;
+          setStatus(error && error.message ? error.message : "验证码发送失败，请稍后再试。");
+        }
+      });
 
       form.addEventListener("submit", async function handleSubmit(event) {
         event.preventDefault();
@@ -247,8 +309,8 @@
 
         try {
           await window.AppAuth.login({
-            username: usernameInput.value,
-            password: passwordInput.value,
+            phone: phoneInput.value,
+            code: codeInput.value,
           });
 
           setStatus("登录成功，正在进入主页。", "success");

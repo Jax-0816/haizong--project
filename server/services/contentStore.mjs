@@ -276,10 +276,19 @@ function validatePrompt(prompt, index) {
 function validateMaterialSection(section, index) {
   const path = `content.materials[${index}]`;
   assertObject(section, path);
-  assertKnownKeys(section, ["id", "title", "description", "items", "industry"], path);
+  assertKnownKeys(section, ["id", "title", "description", "items", "images", "industry"], path);
   ["id", "title", "description"].forEach((key) => assertString(section[key], `${path}.${key}`));
   if ("industry" in section) assertEnum(section.industry, industryIds, `${path}.industry`);
   assertStringArray(section.items, `${path}.items`);
+  if ("images" in section) {
+    assertArray(section.images, `${path}.images`).forEach((image, imageIndex) => validateMaterialImage(image, `${path}.images[${imageIndex}]`));
+  }
+}
+
+function validateMaterialImage(image, path) {
+  assertObject(image, path);
+  assertKnownKeys(image, ["id", "productName", "imageUrl", "fileName", "uploadedAt"], path);
+  ["id", "productName", "imageUrl", "fileName", "uploadedAt"].forEach((key) => assertString(image[key], `${path}.${key}`));
 }
 
 function validateHotspot(hotspot, index) {

@@ -123,6 +123,8 @@
 }
 ```
 
+内容生产台保存生成脚本时，追加写入 `scriptTemplates`。保存记录沿用 `ScriptTemplate` 结构：`id` 使用 `script-saved-001` 递增格式，`opener` 保存脚本开头，`steps` 保存正文结构、结尾和口播文案，不新增根字段。`script-saved-*` 记录允许在脚本模板页删除，内置模板不开放删除。
+
 ### `PromptTemplate`
 
 ```ts
@@ -143,8 +145,23 @@
   title: string;
   description: string;
   items: string[];
+  images?: MaterialImage[];
 }
 ```
+
+### `MaterialImage`
+
+```ts
+{
+  id: string;
+  productName: string;
+  imageUrl: string;
+  fileName: string;
+  uploadedAt: string;
+}
+```
+
+`imageUrl` 保存为项目内可访问路径，例如 `/uploads/materials/material-003/xxx.jpg`。图片文件保存在 `public/uploads/materials/` 下，`content.json` 只保存图片元数据。
 
 ### `HotspotOpportunity`
 

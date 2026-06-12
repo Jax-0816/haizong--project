@@ -1,7 +1,7 @@
 (function attachAuth(global) {
   var defaults = {
-    AUTH_MODE: "local",
     AUTH_API_BASE_URL: "",
+    CODE_ENDPOINT: "/api/auth/code/send",
     LOGIN_ENDPOINT: "/api/auth/login",
     PROFILE_ENDPOINT: "/api/auth/profile",
     LOGOUT_ENDPOINT: "/api/auth/logout",
@@ -9,17 +9,11 @@
     LOGIN_PAGE: "/login.html",
     HOME_PAGE: "/index.html",
     STORAGE_KEY: "haizong.auth.session.v1",
-    SESSION_TTL_MS: 8 * 60 * 60 * 1000,
-    LOCAL_CREDENTIALS: {
-      username: "admin",
-      password: "123456",
-      displayName: "海总管理员",
-    },
   };
   var runtimeConfig = global.__APP_CONFIG__ && typeof global.__APP_CONFIG__ === "object" ? global.__APP_CONFIG__ : {};
   var CONFIG = {
-    AUTH_MODE: runtimeConfig.AUTH_MODE || defaults.AUTH_MODE,
     AUTH_API_BASE_URL: runtimeConfig.AUTH_API_BASE_URL || defaults.AUTH_API_BASE_URL,
+    CODE_ENDPOINT: runtimeConfig.CODE_ENDPOINT || defaults.CODE_ENDPOINT,
     LOGIN_ENDPOINT: runtimeConfig.LOGIN_ENDPOINT || defaults.LOGIN_ENDPOINT,
     PROFILE_ENDPOINT: runtimeConfig.PROFILE_ENDPOINT || defaults.PROFILE_ENDPOINT,
     LOGOUT_ENDPOINT: runtimeConfig.LOGOUT_ENDPOINT || defaults.LOGOUT_ENDPOINT,
@@ -27,21 +21,6 @@
     LOGIN_PAGE: runtimeConfig.LOGIN_PAGE || defaults.LOGIN_PAGE,
     HOME_PAGE: runtimeConfig.HOME_PAGE || defaults.HOME_PAGE,
     STORAGE_KEY: runtimeConfig.STORAGE_KEY || defaults.STORAGE_KEY,
-    SESSION_TTL_MS: Number(runtimeConfig.SESSION_TTL_MS || defaults.SESSION_TTL_MS),
-    LOCAL_CREDENTIALS: {
-      username:
-        runtimeConfig.LOCAL_CREDENTIALS && runtimeConfig.LOCAL_CREDENTIALS.username
-          ? String(runtimeConfig.LOCAL_CREDENTIALS.username)
-          : defaults.LOCAL_CREDENTIALS.username,
-      password:
-        runtimeConfig.LOCAL_CREDENTIALS && runtimeConfig.LOCAL_CREDENTIALS.password
-          ? String(runtimeConfig.LOCAL_CREDENTIALS.password)
-          : defaults.LOCAL_CREDENTIALS.password,
-      displayName:
-        runtimeConfig.LOCAL_CREDENTIALS && runtimeConfig.LOCAL_CREDENTIALS.displayName
-          ? String(runtimeConfig.LOCAL_CREDENTIALS.displayName)
-          : defaults.LOCAL_CREDENTIALS.displayName,
-    },
   };
 
   function getStorage() {
@@ -52,18 +31,10 @@
     }
   }
 
-  function nowIso() {
-    return new Date().toISOString();
-  }
-
   function joinUrl(base, path) {
     var normalizedBase = String(base || "").replace(/\/+$/, "");
     var normalizedPath = String(path || "").startsWith("/") ? path : "/" + String(path || "");
     return normalizedBase + normalizedPath;
-  }
-
-  function createToken(prefix) {
-    return [prefix, Date.now().toString(36), Math.random().toString(36).slice(2, 10)].join("_");
   }
 
   function isSessionExpired(session) {
@@ -105,7 +76,7 @@
 
     try {
       var session = JSON.parse(raw);
-      if (!session || typeof session !== "object" || isSessionExpired(session)) {
+      if (!session || typeof session !== "object" || isSessionExpired(session) || !session.token || !session.phone || !session.role) {
         clearSession();
         return null;
       }
@@ -134,52 +105,7 @@
     redirectTo(CONFIG.HOME_PAGE);
   }
 
-  function toSession(payload) {
-    var loginAt = payload.loginAt || nowIso();
-    return {
-      token: String(payload.token || createToken(payload.authMode || "token")),
-      username: String(payload.username || ""),
-      displayName: String(payload.displayName || payload.username || ""),
-      loginAt: loginAt,
-      expiresAt: String(payload.expiresAt || new Date(Date.now() + CONFIG.SESSION_TTL_MS).toISOString()),
-      authMode: payload.authMode === "remote" ? "remote" : "local",
-    };
-  }
-
-  function normalizeCredentials(credentials) {
-    return {
-      username: String(credentials && credentials.username || "").trim(),
-      password: String(credentials && credentials.password || ""),
-    };
-  }
-
-  async function loginWithLocal(credentials) {
-    var normalized = normalizeCredentials(credentials);
-
-    if (!normalized.username || !normalized.password) {
-      var missingError = new Error("请输入账号和密码。");
-      missingError.code = "MISSING_CREDENTIALS";
-      throw missingError;
-    }
-
-    if (
-      normalized.username !== CONFIG.LOCAL_CREDENTIALS.username ||
-      normalized.password !== CONFIG.LOCAL_CREDENTIALS.password
-    ) {
-      var invalidError = new Error("账号或密码错误。");
-      invalidError.code = "INVALID_CREDENTIALS";
-      throw invalidError;
-    }
-
-    return toSession({
-      token: createToken("local"),
-      username: normalized.username,
-      displayName: CONFIG.LOCAL_CREDENTIALS.displayName,
-      authMode: "local",
-    });
-  }
-
-  async function requestRemote(path, options) {
+  async function requestAuth(path, options) {
     var response = await fetch(joinUrl(CONFIG.AUTH_API_BASE_URL, path), {
       method: options && options.method || "GET",
       headers: Object.assign({ "Content-Type": "application/json" }, options && options.headers),
@@ -194,72 +120,79 @@
     }
 
     if (!response.ok) {
-      var message = payload.message || "远程登录失败，请检查服务端配置。";
+      var message = payload.error || payload.message || "认证请求失败。";
       var requestError = new Error(message);
-      requestError.code = payload.code || "REMOTE_AUTH_FAILED";
+      requestError.code = payload.code || "AUTH_REQUEST_FAILED";
       throw requestError;
     }
 
     return payload;
   }
 
-  async function loginWithRemote(credentials) {
-    var normalized = normalizeCredentials(credentials);
-    var payload = await requestRemote(CONFIG.LOGIN_ENDPOINT, {
-      method: "POST",
-      body: {
-        username: normalized.username,
-        password: normalized.password,
-      },
-    });
-
-    return toSession({
-      token: payload.token,
-      username: payload.user && payload.user.username || normalized.username,
-      displayName: payload.user && payload.user.displayName || normalized.username,
-      expiresAt: payload.expiresAt,
-      authMode: "remote",
-    });
+  function toSession(payload) {
+    var user = payload.user || {};
+    return {
+      token: String(payload.token || ""),
+      phone: String(user.phone || user.username || ""),
+      username: String(user.username || user.phone || ""),
+      displayName: String(user.displayName || user.phone || ""),
+      role: user.role === "admin" ? "admin" : "member",
+      status: String(user.status || "active"),
+      loginAt: String(payload.loginAt || new Date().toISOString()),
+      expiresAt: String(payload.expiresAt || ""),
+      authMode: "server",
+    };
   }
 
-  async function fetchCurrentUser(token) {
-    if (CONFIG.AUTH_MODE !== "remote") {
-      var session = getSession();
-      return session ? { username: session.username, displayName: session.displayName } : null;
-    }
-
-    return requestRemote(CONFIG.PROFILE_ENDPOINT, {
-      method: "GET",
-      headers: {
-        Authorization: "Bearer " + token,
-      },
-    });
+  function getAuthHeaders(token) {
+    return token ? { Authorization: "Bearer " + token } : {};
   }
 
-  async function validateSession(token) {
-    if (CONFIG.AUTH_MODE !== "remote") {
-      return { valid: true };
-    }
-
-    return requestRemote(CONFIG.VALIDATE_ENDPOINT, {
+  async function sendCode(phone) {
+    return requestAuth(CONFIG.CODE_ENDPOINT, {
       method: "POST",
-      body: { token: token },
+      body: { phone: phone },
     });
   }
 
   async function login(credentials) {
-    var session = CONFIG.AUTH_MODE === "remote"
-      ? await loginWithRemote(credentials)
-      : await loginWithLocal(credentials);
-
+    var payload = await requestAuth(CONFIG.LOGIN_ENDPOINT, {
+      method: "POST",
+      body: {
+        phone: credentials && credentials.phone,
+        code: credentials && credentials.code,
+      },
+    });
+    var session = toSession(payload);
     persistSession(session);
     global.dispatchEvent(new CustomEvent("auth:login", { detail: session }));
     return session;
   }
 
-  function logout(options) {
+  async function fetchCurrentUser(token) {
+    return requestAuth(CONFIG.PROFILE_ENDPOINT, {
+      method: "GET",
+      headers: getAuthHeaders(token),
+    });
+  }
+
+  async function validateSession(token) {
+    return requestAuth(CONFIG.VALIDATE_ENDPOINT, {
+      method: "POST",
+      body: { token: token },
+    });
+  }
+
+  async function logout(options) {
     var settings = Object.assign({ redirect: true, redirectTo: CONFIG.LOGIN_PAGE }, options);
+    var session = getSession();
     clearSession();
+    if (session && session.token) {
+      requestAuth(CONFIG.LOGOUT_ENDPOINT, {
+        method: "POST",
+        headers: getAuthHeaders(session.token),
+      }).catch(function ignoreLogoutError() {});
+    }
     global.dispatchEvent(new CustomEvent("auth:logout"));
     if (settings.redirect) {
       redirectTo(settings.redirectTo);
@@ -285,8 +218,7 @@
 
   global.AppAuth = {
     config: CONFIG,
-    loginWithLocal: loginWithLocal,
-    loginWithRemote: loginWithRemote,
+    sendCode: sendCode,
     fetchCurrentUser: fetchCurrentUser,
     validateSession: validateSession,
     login: login,
@@ -296,5 +228,6 @@
     requireAuth: requireAuth,
     redirectIfAuthenticated: redirectIfAuthenticated,
     clearSession: clearSession,
+    getAuthHeaders: getAuthHeaders,
   };
 })(window);

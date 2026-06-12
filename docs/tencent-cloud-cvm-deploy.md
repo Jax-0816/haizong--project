@@ -1,40 +1,40 @@
-# 阿里云 ECS 部署完整指南
+# 腾讯云 CVM 部署完整指南
 
-适用场景：将海哥内容工作台部署到阿里云 ECS，作为内部工具或演示环境上线。单台 ECS 前后端一体部署。
+适用场景：将海哥内容工作台部署到腾讯云 CVM，作为内部工具或演示环境上线。单台 CVM 前后端一体部署。
 
 ---
 
 ## 前置说明
 
-- 当前项目以**单机文件存储**为主，数据写入 `src/data/content.json`
-- 登录默认**本地模式**（`AUTH_MODE=local`），不是多用户账号体系
+- 当前项目以**单机文件存储**为主，业务数据写入 `src/data/content.json`，账号数据写入 `server/data/auth-users.json`
+- 登录已支持**手机号验证码 + 管理员账号管理**；当前第一阶段验证码为本地模拟，会在登录页直接显示测试验证码
 - 联网调研和 AI 生成依赖外部 API：Tavily + DeepSeek
-- 如果目标是正式多人系统，需先补齐数据库、正式登录、备份和权限隔离
+- 如果目标是正式多人长期使用，需先接入真实短信服务、备份策略、数据库或更可靠的存储方案
 
 ---
 
-## 阶段 1：创建 ECS 实例
+## 阶段 1：创建 CVM 实例
 
 ### 1.1 购买配置
 
 | 配置项 | 建议值 |
 | --- | --- |
 | 地域 | 靠近你的常用办公地 |
-| 系统 | Ubuntu 22.04 LTS（推荐）或 Alibaba Cloud Linux 3 |
+| 系统 | Ubuntu 22.04 LTS（推荐）或 TencentOS Server 3.1 |
 | 规格 | 2 vCPU / 2 GB 内存（起步） |
-| 系统盘 | 40 GB ESSD Entry |
+| 系统盘 | 40 GB 高性能云硬盘 |
 | 公网 IP | 分配（按流量或按带宽） |
 
 ### 1.2 安全组规则
 
-在 ECS 控制台 → 安全组 → 添加规则：
+在 CVM 控制台 → 安全组 → 添加规则：
 
 | 方向 | 端口 | 来源 | 说明 |
 | --- | --- | --- | --- |
 | 入方向 | 22 | 你的 IP（不要 0.0.0.0/0） | SSH |
 | 入方向 | 80 | 0.0.0.0/0 | HTTP |
 | 入方向 | 443 | 0.0.0.0/0 | HTTPS |
-| 入方向 | 4280 | 127.0.0.1/32 | 应用端口（仅本机 Nginx 访问） |
+| 入方向 | 4280 | 不开放 | 应用只监听 127.0.0.1，由本机 Nginx 反代 |
 
 > **安全提示**：SSH 端口 22 不要对全网开放，限制为你的办公/家庭 IP。
 
@@ -42,10 +42,10 @@
 
 ## 阶段 2：服务器初始化
 
-SSH 登录到 ECS：
+SSH 登录到 CVM：
 
 ```bash
-ssh root@<你的ECS公网IP>
+ssh root@<你的CVM公网IP>
 ```
 
 ### 2.1 创建应用用户（不要用 root 运行）
@@ -66,7 +66,7 @@ node -v   # 应输出 v20.x.x
 npm -v
 ```
 
-Alibaba Cloud Linux：
+TencentOS / CentOS 系：
 
 ```bash
 curl -fsSL https://rpm.nodesource.com/setup_20.x | bash -
@@ -80,7 +80,7 @@ yum install -y nodejs
 apt install -y nginx
 systemctl enable nginx
 
-# Alibaba Cloud Linux
+# TencentOS / CentOS
 yum install -y nginx
 systemctl enable nginx
 ```
@@ -115,22 +115,24 @@ systemctl restart sshd
 # 先构建
 npm run build
 
-# 同步到 ECS（排除不需要的文件）
+# 同步到 CVM（排除不需要的文件，保护线上业务数据和账号数据）
 rsync -avz --delete \
   --exclude='node_modules/' \
   --exclude='.git/' \
   --exclude='.env' \
   --exclude='.env.*' \
+  --exclude='src/data/content.json' \
+  --exclude='server/data/auth-users.json' \
   --exclude='logs/' \
   --exclude='backups/' \
   -e "ssh -i ~/.ssh/your-key.pem" \
-  ./ root@<ECS_IP>:/opt/haizong-workbench/
+  ./ root@<CVM_IP>:/opt/haizong-workbench/
 ```
 
 **方式 B：git clone**（如果你有私有仓库）
 
 ```bash
-ssh root@<ECS_IP>
+ssh root@<CVM_IP>
 cd /opt
 git clone <你的仓库地址> haizong-workbench
 ```
@@ -140,7 +142,7 @@ git clone <你的仓库地址> haizong-workbench
 在服务器上创建 `.env.production.local`：
 
 ```bash
-ssh root@<ECS_IP>
+ssh root@<CVM_IP>
 cd /opt/haizong-workbench
 
 cat > .env.production.local << 'EOF'
@@ -148,11 +150,13 @@ NODE_ENV=production
 HOST=127.0.0.1
 PORT=4280
 
-AUTH_MODE=local
-AUTH_LOCAL_USERNAME=admin
-AUTH_LOCAL_PASSWORD=请改成你自己的密码
-AUTH_LOCAL_DISPLAY_NAME=海总管理员
+AUTH_CODE_ENDPOINT=/api/auth/code/send
+AUTH_ADMIN_PHONE=你的管理员手机号
+AUTH_ADMIN_DISPLAY_NAME=海总管理员
+AUTH_TOKEN_SECRET=请改成一串足够长的随机字符串
 AUTH_SESSION_TTL_MS=28800000
+AUTH_USERS_PATH=server/data/auth-users.json
+AUTH_CODE_TTL_MS=300000
 
 CONTENT_STORAGE_PATH=src/data/content.json
 CONTENT_READONLY=false
@@ -166,7 +170,10 @@ DEEPSEEK_MODEL=deepseek-chat
 EOF
 ```
 
-> **重要**：`HOST=127.0.0.1` — 应用只监听本地，外部通过 Nginx 访问。如果想直接暴露测试，临时改为 `0.0.0.0`。
+> **重要**：
+> - `HOST=127.0.0.1` — 应用只监听本地，外部通过 Nginx 访问。如果想直接暴露测试，临时改为 `0.0.0.0`。
+> - `AUTH_TOKEN_SECRET` 必须使用强随机字符串，不要使用示例值。
+> - 当前验证码是本地模拟，只适合内部试运行；正式多人使用前需要接入短信服务商。
 
 ### 3.3 构建和测试启动
 
@@ -224,7 +231,7 @@ systemctl reload nginx
 curl https://get.acme.sh | sh
 source ~/.bashrc
 
-# 申请证书（需要域名已解析到 ECS）
+# 申请证书（需要域名已解析到 CVM）
 acme.sh --issue -d your-domain.com --nginx
 
 # 安装证书
@@ -295,7 +302,7 @@ pm2 startup
 
 ## 阶段 6：数据持久化
 
-### 6.1 content.json 备份
+### 6.1 content.json 和 auth-users.json 备份
 
 ```bash
 # 设置每日凌晨 3 点自动备份
@@ -307,13 +314,16 @@ crontab -e -u haizong
 
 备份文件保存在 `/opt/haizong-workbench/backups/`，保留最近 30 个。
 
-### 6.2 （可选）将 content.json 移出代码目录
+如果备份脚本当前只覆盖 `src/data/content.json`，上线前需要同步把 `server/data/auth-users.json` 纳入备份范围，否则账号记录只保存在单机文件中，服务器故障时无法恢复。
+
+### 6.2 （可选）将业务和账号数据移出代码目录
 
 防止 `git pull` 或 rsync `--delete` 覆盖生产数据：
 
 ```bash
 mkdir -p /data/haizong
 mv /opt/haizong-workbench/src/data/content.json /data/haizong/content.json
+mv /opt/haizong-workbench/server/data/auth-users.json /data/haizong/auth-users.json
 chown -R haizong:haizong /data/haizong
 ```
 
@@ -321,6 +331,7 @@ chown -R haizong:haizong /data/haizong
 
 ```text
 CONTENT_STORAGE_PATH=/data/haizong/content.json
+AUTH_USERS_PATH=/data/haizong/auth-users.json
 ```
 
 并更新 systemd 服务中的 `ReadWritePaths`：
@@ -336,15 +347,19 @@ ReadWritePaths=/data/haizong
 依次检查以下项目：
 
 ```
-□ 打开 http://<域名> — 能看到登录页
-□ 输入用户名密码 — 能成功登录进入工作台
+□ 打开 http://<域名> — 能看到手机号验证码登录页
+□ 管理员手机号获取验证码 — 页面显示本地测试验证码
+□ 输入手机号验证码 — 能成功登录进入工作台
+□ 管理员能看到“账号管理”
+□ 普通手机号首次登录会自动注册为成员
+□ 管理员删除普通成员后，该手机号不能再登录
 □ curl http://127.0.0.1:4280/api/health — 返回 {"status":"ok",...}
 □ curl http://127.0.0.1:4280/app-config.js — 返回 window.__APP_CONFIG__ = {...}
 □ 在"联网调研"输入主题点击搜索 — 能返回结果
 □ 在"选题池"确认一个 AI 选题 — 选题成功加入
 □ systemctl restart haizong — 服务重启正常
-□ 重启后重新登录 — 之前确认的选题还在
-□ 故意输入错误密码 — 被拒绝登录
+□ 重启后重新登录 — 之前确认的选题和账号记录还在
+□ 故意输入错误验证码 — 被拒绝登录
 □ HTTPS 证书正常 — 浏览器显示安全锁
 ```
 
@@ -352,13 +367,13 @@ ReadWritePaths=/data/haizong
 
 ## 阶段 8：日常更新流程
 
-当本地有新版本需要推送到 ECS：
+当本地有新版本需要推送到 CVM：
 
 ### 方式 A：使用部署脚本（推荐）
 
 ```bash
 # 本地执行（一键完成构建、上传、安装、重启、健康检查）
-./scripts/deploy-ecs.sh <ECS_IP> ~/.ssh/your-key.pem root
+./scripts/deploy-cvm.sh <CVM_IP> ~/.ssh/your-key.pem root
 ```
 
 ### 方式 B：手动更新
@@ -367,29 +382,30 @@ ReadWritePaths=/data/haizong
 # 1. 本地构建
 npm run build
 
-# 2. 同步到 ECS（保护 content.json 不被覆盖）
+# 2. 同步到 CVM（保护 content.json 不被覆盖）
 rsync -avz --delete \
   --exclude='node_modules/' \
   --exclude='.git/' \
   --exclude='.env' \
   --exclude='.env.*' \
   --exclude='src/data/content.json' \
+  --exclude='server/data/auth-users.json' \
   --exclude='logs/' \
   --exclude='backups/' \
   -e "ssh -i ~/.ssh/your-key.pem" \
-  ./ root@<ECS_IP>:/opt/haizong-workbench/
+  ./ root@<CVM_IP>:/opt/haizong-workbench/
 
 # 3. 远程安装依赖
-ssh root@<ECS_IP> "cd /opt/haizong-workbench && npm install"
+ssh root@<CVM_IP> "cd /opt/haizong-workbench && npm install"
 
 # 4. 重启服务
-ssh root@<ECS_IP> "systemctl restart haizong"
+ssh root@<CVM_IP> "systemctl restart haizong"
 
 # 5. 验证
-ssh root@<ECS_IP> "curl -s http://127.0.0.1:4280/api/health"
+ssh root@<CVM_IP> "curl -s http://127.0.0.1:4280/api/health"
 ```
 
-> **注意**：`--exclude='src/data/content.json'` 是关键，防止把本地测试数据覆盖线上真实数据。
+> **注意**：`--exclude='src/data/content.json'` 和 `--exclude='server/data/auth-users.json'` 是关键，防止把本地测试数据覆盖线上真实业务数据和账号数据。
 
 ---
 
@@ -457,15 +473,27 @@ grep CONTENT_READONLY /opt/haizong-workbench/.env.production.local
 curl http://127.0.0.1:4280/app-config.js
 ```
 
+### 手机号验证码登录失败
+
+检查管理员手机号、token secret 和账号数据文件：
+
+```bash
+grep AUTH_ADMIN_PHONE /opt/haizong-workbench/.env.production.local
+grep AUTH_TOKEN_SECRET /opt/haizong-workbench/.env.production.local
+ls -la /opt/haizong-workbench/server/data/auth-users.json
+```
+
+如果是首次部署，`server/data/auth-users.json` 可以保持空用户列表，管理员第一次用 `AUTH_ADMIN_PHONE` 登录时会自动创建管理员账号。
+
 ---
 
 ## 阶段 10：成本估算
 
 | 资源 | 月费（参考） |
 | --- | --- |
-| ECS 2C2G（按量） | ~¥70 |
-| ECS 2C4G（包年） | ~¥100/月 |
-| 40GB ESSD | ~¥20 |
+| CVM 2C2G（按量） | ~¥70 |
+| CVM 2C4G（包年） | ~¥100/月 |
+| 40GB 高性能云硬盘 | ~¥20 |
 | 公网 IP + 流量 | ~¥30-50 |
 | **合计** | **约 ¥120-170/月** |
 
@@ -476,8 +504,9 @@ curl http://127.0.0.1:4280/app-config.js
 ## 当前阶段不建议做的事
 
 - 微服务拆分（单机 + 单进程已经够用）
-- 在文件写回模式上承诺正式多用户使用
-- 使用默认密码 `123456` 上线
+- 在文件写回模式上承诺正式多人长期使用
+- 使用示例 `AUTH_TOKEN_SECRET` 或未配置管理员手机号上线
+- 把本地模拟验证码当成正式短信验证码使用
 - 不加 HTTPS 证书就长期暴露公网
 - 不配置防火墙就直接开放 4280 端口
 - 引入 Docker（对当前单进程场景收益低，除非后续加数据库）
