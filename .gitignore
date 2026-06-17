@@ -1,5 +1,7 @@
-node_modules
-dist
+node_modules/
+.venv/
+*.log
+dist/
 .env
 .env.local
 .env.*.local
