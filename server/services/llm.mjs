@@ -113,6 +113,53 @@ export async function generateTopicCandidates({ request, accountContext, sources
   return parseModelJson(content);
 }
 
+export async function generateWeeklyPlan({ industry, industryLabel, weeklyPlanContext }) {
+  const apiKey = requireEnv("DEEPSEEK_API_KEY", "缺少 DEEPSEEK_API_KEY，请在 .env.local 中配置 DeepSeek API Key。");
+  const baseUrl = (process.env.DEEPSEEK_BASE_URL || DEFAULT_BASE_URL).replace(/\/$/, "");
+  const model = process.env.DEEPSEEK_MODEL || DEFAULT_MODEL;
+
+  const response = await fetch(`${baseUrl}/chat/completions`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model,
+      temperature: 0.4,
+      response_format: { type: "json_object" },
+      messages: [
+        {
+          role: "system",
+          content: `你是一个抖音餐饮 B 端自媒体运营专家，专注于为餐饮供应链账号制定周度发布计划。你需要根据选题池中的真实选题，为周一到周五每天挑选最合适的选题作为当日发布内容，并给出推荐理由。只返回 JSON。`,
+        },
+        {
+          role: "user",
+          content: buildWeeklyPlanPrompt({ industry, industryLabel, weeklyPlanContext }),
+        },
+      ],
+    }),
+  });
+
+  if (!response.ok) {
+    const detail = await response.text();
+    const error = new Error(`周计划生成失败：${response.status} ${detail}`);
+    error.statusCode = 502;
+    throw error;
+  }
+
+  const payload = await response.json();
+  const content = payload?.choices?.[0]?.message?.content;
+
+  if (!content) {
+    const error = new Error("大模型没有返回周计划内容。");
+    error.statusCode = 502;
+    throw error;
+  }
+
+  return parseModelJson(content);
+}
+
 function normalizeTimeout(value, fallback) {
   const parsed = Number(value);
   return Number.isFinite(parsed) && parsed >= 1000 ? parsed : fallback;
@@ -251,6 +298,7 @@ function buildPrompt({ request, accountContext, sources, industry }) {
         "topicIdeas 输出 3 到 5 条。",
         "所有建议必须服务 B 端经营价值，不要写普通消费者种草内容。",
         "如果来源不足，matchScore 降低，并在 risks 中说明。",
+        "如果 accountContext 中包含 douyinTrends（抖音热门视频数据），请结合 title、digg_count（点赞数）、comment_count（评论数）判断内容热度趋势，优先引用高互动视频的选题方向，并在 matchedReason 中说明抖音热度参考。",
       ],
     },
     null,
@@ -303,6 +351,7 @@ function buildTopicCandidatePrompt({ request, accountContext, sources, industry 
         "sourceUrls 必须引用 sources 中真实存在的 url；如果来源不足，sourceUrls 可以为空，但 recommendationScore 不能超过 60。",
         "所有建议必须服务 B 端经营价值，不要写普通消费者种草内容。",
         "不要编造产品优势、价格、销量、排名或平台数据。",
+        "如果 accountContext 中包含 douyinTrends（抖音热门视频数据），请结合 title、digg_count（点赞数）、comment_count（评论数）判断内容热度趋势，优先引用高互动视频的选题方向，并在 hotSource 中体现抖音热度参考。",
       ],
     },
     null,
@@ -606,6 +655,48 @@ function buildMaterialExpandPrompt({ sectionTitle, existingItems, industryLabel 
         "必须服务 B 端经营价值，不要写普通消费者种草内容。",
         `内容必须适配${industryLabel}行业。`,
       ],
+    },
+    null,
+    2,
+  );
+}
+
+function buildWeeklyPlanPrompt({ industry, industryLabel, weeklyPlanContext }) {
+  const dayThemes = {
+    周一: { theme: "行业热点 / 经营判断", focus: "从选题池中挑选行业趋势、经营判断、供应链热点类选题" },
+    周二: { theme: "产品选品指南", focus: "从选题池中挑选产品种草、食材选品、采购指南类选题" },
+    周三: { theme: "痛点解决", focus: "从选题池中挑选用户痛点、B端经营、成本控制类选题" },
+    周四: { theme: "案例拆解", focus: "从选题池中挑选案例拆解、门店复盘、成功模式类选题" },
+    周五: { theme: "节日借势 / 套餐建议", focus: "从选题池中挑选节日节气、套餐组合、爆品打造类选题" },
+  };
+
+  return JSON.stringify(
+    {
+      task: `你是${industryLabel}抖音 B 端自媒体账号的运营负责人。请根据选题池中的真实选题，为下周一到周五每天挑选 1 条最适合发布的选题，组成本周发布计划。`,
+      rules: [
+        "每天只输出 1 条选题。",
+        "选题必须从选题池（availableTopics）中真实选取，output 字段用选题的 title。",
+        "周一优先行业热点/经营判断类，周二优先产品选品指南类，周三优先痛点解决类，周四优先案例拆解类，周五优先节日借势/套餐建议类。",
+        "如果某天没有完全匹配的选题，选最接近的替代，并在 reason 中说明。",
+        "每条的 theme 必须用下面指定的标准格式。",
+        "只输出 JSON，不要 Markdown。",
+      ],
+      dayThemes,
+      availableTopics: weeklyPlanContext.topics,
+      priorityTopics: weeklyPlanContext.priorityTopics,
+      recentHotspots: weeklyPlanContext.hotspots,
+      accountPositioning: weeklyPlanContext.positioning,
+      outputSchema: {
+        weeklyPlan: [
+          {
+            day: "周一",
+            theme: "行业热点 / 经营判断",
+            output: "从选题池选取的选题标题",
+            topicId: "对应选题的 id",
+            reason: "选取理由，50字以内",
+          },
+        ],
+      },
     },
     null,
     2,

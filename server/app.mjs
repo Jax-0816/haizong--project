@@ -17,6 +17,8 @@ import { confirmTopic, generateCandidates, getTopicCategories, refreshCandidates
 import { expandMaterialPhrases, refreshScriptTemplate } from "./services/llm.mjs";
 import { getAppRuntimeConfig } from "./runtimeConfig.mjs";
 import { normalizeIndustryId } from "./services/industry.mjs";
+import { searchDouyinVideos } from "./services/douyinService.mjs";
+import { refreshWeeklyPlan } from "./services/weeklyPlan.mjs";
 import {
   deleteAuthUser,
   getCurrentUserFromRequest,
@@ -203,6 +205,27 @@ export function createAppHandler(options = {}) {
       if (req.method === "PUT" && pathname === "/api/materials/image-assets") {
         const body = await readJsonBody(req, { maxBytes: 24 * 1024 * 1024 });
         const result = await saveMaterialImageAssets(body);
+        sendJson(res, 200, result);
+        return;
+      }
+
+      if (req.method === "POST" && pathname === "/api/douyin/search") {
+        const body = await readJsonBody(req);
+        validateDouyinSearchRequest(body);
+        const result = await searchDouyinVideos({
+          query: body.query,
+          maxResults: body.maxResults,
+          sortType: body.sortType,
+          publishTime: body.publishTime,
+        });
+        sendJson(res, 200, { videos: result });
+        return;
+      }
+
+      if (req.method === "POST" && pathname === "/api/dashboard/weekly-plan") {
+        const body = await readJsonBody(req);
+        const industry = String(body.industry ?? "hotpot").trim();
+        const result = await refreshWeeklyPlan({ industry });
         sendJson(res, 200, result);
         return;
       }
@@ -528,6 +551,37 @@ function validateTopicRefreshRequest(body) {
 
   const limit = Number(body.limit ?? 5);
   body.limit = Number.isFinite(limit) ? Math.min(8, Math.max(1, Math.round(limit))) : 5;
+}
+
+function validateDouyinSearchRequest(body) {
+  if (!body || typeof body !== "object") {
+    const error = new Error("请求参数缺失。");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const query = String(body.query ?? "").trim();
+  if (!query) {
+    const error = new Error("请输入抖音搜索关键词。");
+    error.statusCode = 400;
+    throw error;
+  }
+  if (query.length > 200) {
+    const error = new Error("搜索关键词过长，请控制在 200 字以内。");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  body.query = query;
+
+  const maxResults = Number(body.maxResults ?? 20);
+  body.maxResults = Number.isFinite(maxResults) ? Math.min(20, Math.max(1, Math.round(maxResults))) : 20;
+
+  const validSortTypes = ["_0", "_1", "_2"];
+  body.sortType = validSortTypes.includes(String(body.sortType)) ? String(body.sortType) : "_1";
+
+  const validPublishTimes = ["_0", "_1", "_7", "_180"];
+  body.publishTime = validPublishTimes.includes(String(body.publishTime)) ? String(body.publishTime) : "_0";
 }
 
 function validateMaterialExpandRequest(body) {

@@ -3,15 +3,29 @@ import { resolve } from "node:path";
 import { getIndustryProfile, normalizeIndustryId } from "./industry.mjs";
 import { generateResearchInsight } from "./llm.mjs";
 import { searchWeb } from "./search.mjs";
+import { searchDouyinVideos } from "./douyinService.mjs";
 
 const content = JSON.parse(readFileSync(resolve(process.cwd(), "src/data/content.json"), "utf8"));
 
 export async function runResearch(request) {
   const industry = normalizeIndustryId(request.industry);
-  const sources = await searchWeb({
-    query: buildSearchQuery(request, industry),
-    freshness: request.freshness,
-  });
+  const douyinPublishTime = freshnessToDouyinPublishTime(request.freshness);
+
+  // 并行调用 Tavily 网页搜索 + 抖音视频搜索（抖音失败降级，不阻塞主流程）
+  const [sources, douyinVideos] = await Promise.all([
+    searchWeb({
+      query: buildSearchQuery(request, industry),
+      freshness: request.freshness,
+    }),
+    searchDouyinVideos({
+      query: buildDouyinQuery(request, industry),
+      publishTime: douyinPublishTime,
+      maxResults: 10,
+    }).catch((err) => {
+      console.warn("[research] 抖音搜索失败，继续主流程:", err.message);
+      return [];
+    }),
+  ]);
 
   const modelResult = await generateResearchInsight({
     request,
@@ -22,6 +36,7 @@ export async function runResearch(request) {
       columns: content.columns,
       materials: content.materials,
       recentHotspots: content.hotspots,
+      douyinTrends: douyinVideos,
     },
     sources,
   });
@@ -48,6 +63,25 @@ function buildSearchQuery(request, industry) {
 function truncateSearchQuery(query) {
   const normalized = query.replace(/\s+/g, " ").trim();
   return normalized.length > 380 ? normalized.slice(0, 380) : normalized;
+}
+
+function buildDouyinQuery(request, industry) {
+  const profile = getIndustryProfile(content, industry);
+  const intent = profile?.searchKeywords?.general ?? "";
+  const parts = [request.query, intent].filter(Boolean).join(" ");
+  const normalized = parts.replace(/\s+/g, " ").trim();
+  return normalized.length > 200 ? normalized.slice(0, 200) : normalized;
+}
+
+function freshnessToDouyinPublishTime(freshness) {
+  const map = {
+    noLimit: "_0",
+    oneDay: "_1",
+    oneWeek: "_7",
+    oneMonth: "_180",
+    oneYear: "_180",
+  };
+  return map[freshness] ?? "_0";
 }
 
 function normalizeResearchResult({ request, sources, modelResult }) {

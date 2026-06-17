@@ -847,6 +847,8 @@ function Dashboard({
   const [dashboardAi, setDashboardAi] = useState<DashboardAiState | null>(null);
   const [dashboardAiError, setDashboardAiError] = useState("");
   const [dashboardAiLoading, setDashboardAiLoading] = useState("");
+  const [weeklyPlanLoading, setWeeklyPlanLoading] = useState(false);
+  const [weeklyPlan, setWeeklyPlan] = useState(industryProfile.dashboard.weeklyPlan);
   const dashboardStorageKey = storageKeyForIndustry(dashboardAiKey, activeIndustry);
 
   useEffect(() => {
@@ -862,6 +864,7 @@ function Dashboard({
 
   useEffect(() => {
     setDashboardFocus(industryProfile.dashboard.heroTitle);
+    setWeeklyPlan(industryProfile.dashboard.weeklyPlan);
   }, [industryProfile]);
 
   const runDashboardAi = async (label: string, request: ResearchRequest) => {
@@ -913,6 +916,27 @@ function Dashboard({
         materials: data.materials,
       }),
     });
+  };
+
+  const handleRefreshWeeklyPlan = async () => {
+    setWeeklyPlanLoading(true);
+    try {
+      const response = await fetch("/api/dashboard/weekly-plan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ industry: activeIndustry }),
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error ?? "周计划生成失败");
+      // 用返回的最新数据更新本地状态
+      if (Array.isArray(payload.weeklyPlan)) {
+        setWeeklyPlan(payload.weeklyPlan);
+      }
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "周计划生成失败");
+    } finally {
+      setWeeklyPlanLoading(false);
+    }
   };
 
   const publishedTopics = topics.filter((topic) => topic.publishData.views > 0);
@@ -1055,9 +1079,9 @@ function Dashboard({
       <section className="command-panel ai-command-panel">
         <div className="command-section-head">
           <div>
-            <span className="command-kicker">Tavily + DeepSeek</span>
+            <span className="command-kicker">抖音 · Tavily · DeepSeek</span>
             <h2>{industryProfile.label} AI 今日决策</h2>
-            <p>调用 Tavily + DeepSeek，基于账号定位、热点、选题和素材生成建议。</p>
+            <p>调用抖音视频搜索 + Tavily 网页搜索，经 DeepSeek 分析总结，基于账号定位、热点、选题和素材生成建议。</p>
           </div>
           <button className="command-button primary" disabled={Boolean(dashboardAiLoading)} onClick={requestTodayDecision} type="button">
             {dashboardAiLoading ? "生成中" : "重新生成"}
@@ -1122,9 +1146,19 @@ function Dashboard({
               <span className="command-kicker">Weekly Plan</span>
               <h2>本周发布计划</h2>
             </div>
+            <button
+              className="icon-button"
+              disabled={weeklyPlanLoading}
+              onClick={handleRefreshWeeklyPlan}
+              title="从选题池智能生成本周发布计划"
+              type="button"
+            >
+              {weeklyPlanLoading ? <Loader2 className="spin-icon" size={18} aria-hidden="true" /> : <Sparkles size={18} aria-hidden="true" />}
+              <span>{weeklyPlanLoading ? "生成中" : "刷新"}</span>
+            </button>
           </div>
           <div className="weekly-list">
-            {industryProfile.dashboard.weeklyPlan.map((item) => (
+            {weeklyPlan.map((item) => (
               <article key={item.day}>
                 <span>{item.day}</span>
                 <h3>{item.theme}</h3>
@@ -1547,7 +1581,7 @@ function TopicsView({
           <div className="topics-toolbar">
             <div className="topics-toolbar-copy">
               <strong>联网重调研</strong>
-              <span>{industryProfile.label}行业下，按当前筛选条件调用 Tavily + DeepSeek，生成待确认的新候选。</span>
+              <span>{industryProfile.label}行业下，按当前筛选条件调用抖音视频搜索 + Tavily 网页搜索，经 DeepSeek 分析总结，生成待确认的新候选。</span>
             </div>
             <div className="topics-toolbar-actions">
               <button className="icon-button filter-refresh-button" disabled={refreshLoading} onClick={refreshTopicsFromFilters} type="button">
@@ -2482,10 +2516,13 @@ function ResearchView({
     }
   };
 
-  const clearHistory = () => {
-    setHistory([]);
-    setActiveResult(null);
-    window.localStorage.removeItem(historyStorageKey);
+  const removeHistoryItem = (id) => {
+    const next = history.filter((item) => item.id !== id);
+    setHistory(next);
+    window.localStorage.setItem(historyStorageKey, JSON.stringify(next));
+    if (activeResult?.id === id) {
+      setActiveResult(null);
+    }
   };
 
   return (
@@ -2565,24 +2602,33 @@ function ResearchView({
             <h2>调研历史</h2>
             <span>保存在当前浏览器</span>
           </div>
-          <button className="ghost-button" disabled={history.length === 0} onClick={clearHistory} type="button" title="清空历史">
-            <Trash2 size={17} aria-hidden="true" />
-          </button>
         </div>
         <div className="history-list">
           {history.length === 0 ? <p className="empty-text">暂无调研记录。</p> : null}
           {history.map((item) => (
-            <button
+            <div
               className={`history-row ${activeResult?.id === item.id ? "active" : ""}`}
               key={item.id}
-              onClick={() => setActiveResult(item)}
-              type="button"
             >
-              <strong>{item.request.query}</strong>
-              <span>
-                {item.matchScore}匹配 · {new Date(item.createdAt).toLocaleString("zh-CN")}
-              </span>
-            </button>
+              <button
+                className="history-row-content"
+                onClick={() => setActiveResult(item)}
+                type="button"
+              >
+                <strong>{item.request.query}</strong>
+                <span>
+                  {item.matchScore}匹配 · {new Date(item.createdAt).toLocaleString("zh-CN")}
+                </span>
+              </button>
+              <button
+                className="icon-button history-delete"
+                onClick={(e) => { e.stopPropagation(); removeHistoryItem(item.id); }}
+                title="删除此条记录"
+                type="button"
+              >
+                <Trash2 size={15} aria-hidden="true" />
+              </button>
+            </div>
           ))}
         </div>
       </aside>

@@ -421,30 +421,6 @@
   ],
   "topics": [
     {
-      "id": "topic-001",
-      "title": "火锅店老板选毛肚，最容易踩的3个坑",
-      "column": "火锅食材选品指南",
-      "contentType": "避坑",
-      "targetUser": "火锅店老板",
-      "painPoint": "不知道如何判断毛肚品质，容易只看价格采购",
-      "businessLink": "毛肚产品标准、稳定供货、分级采购建议",
-      "hotSource": "常规经营痛点",
-      "angle": "从门店复购和出品稳定性切入",
-      "coreView": "毛肚不是越便宜越划算，稳定口感和损耗才决定综合成本",
-      "platform": "抖音/视频号",
-      "format": "口播+产品近景",
-      "scriptStatus": "已写",
-      "publishData": {
-        "views": 12800,
-        "likes": 326,
-        "saves": 91,
-        "comments": 38,
-        "conversions": 7
-      },
-      "review": "用户对判断标准感兴趣，可扩展成毛肚分级系列",
-      "topicCategory": "系列化选题"
-    },
-    {
       "id": "topic-002",
       "title": "为什么很多火锅店菜单越做越厚，利润却越来越低",
       "column": "火锅店成本控制",
@@ -1563,6 +1539,328 @@
         "避免变成消费者种草内容，需聚焦门店经营决策",
         "不可承诺具体销量或利润率"
       ]
+    },
+    {
+      "id": "topic-042",
+      "industry": "hotpot",
+      "title": "火锅店爆品打造第一步：管好你的库房，让爆品出餐稳定又赚钱",
+      "column": "火锅店爆品打造",
+      "topicCategory": "爆品打造选题",
+      "contentType": "爆品",
+      "targetUser": "火锅店老板、后厨负责人",
+      "painPoint": "爆品推广后因备货混乱、出品不稳定导致差评和复购下降",
+      "businessLink": "直接关联食材供应链服务，展示稳定交付和标准化管理能力",
+      "hotSource": "餐饮盈利从管理库房开始的热点讨论",
+      "angle": "从库房标准化切入，说明稳定供应链和库存管理是爆品长期存活的基础",
+      "coreView": "爆品不是单靠营销，后端的库存标准化和损耗控制决定了它能不能持续。",
+      "platform": "抖音 / 视频号",
+      "format": "痛点拆解口播 + 库房管理实拍画面",
+      "scriptStatus": "未写",
+      "publishData": {
+        "views": 0,
+        "likes": 0,
+        "saves": 0,
+        "comments": 0,
+        "conversions": 0
+      },
+      "review": "AI 联网生成，已人工确认入池，待脚本和素材补充",
+      "sourceUrls": [
+        "https://www.instagram.com/reel/DYgALq2FATD"
+      ],
+      "recommendationScore": 78,
+      "aiGenerated": true,
+      "riskNotes": [
+        "需避免直接贬低具体门店的库房管理方式",
+        "内容需强调供应链解决方案，而非单纯说教"
+      ]
+    },
+    {
+      "id": "topic-051",
+      "industry": "hotpot",
+      "title": "食安新制将火锅店纳入管理，老板如何提前做好供应链合规准备？",
+      "column": "火锅店成本控制",
+      "topicCategory": "行业热点选题",
+      "contentType": "热点",
+      "targetUser": "火锅店老板",
+      "painPoint": "新规即将实施，门店面临食材溯源、供应商资质审查等合规压力，担心被处罚",
+      "businessLink": "火锅食材供应链合规服务、稳定可溯源的食材供应",
+      "hotSource": "Instagram食力foodNEXT账号透露，卫福部拟将3家以上连锁火锅店纳入食安新制，预计2026年7月上路",
+      "angle": "从供应链合规角度，给出火锅店可以立即执行的检查清单和供应商管理方法",
+      "coreView": "合规不是成本，而是建立顾客信任和避免巨额罚款的底线投资",
+      "platform": "公众号 / 抖音",
+      "format": "清单型文章",
+      "scriptStatus": "未写",
+      "publishData": {
+        "views": 0,
+        "likes": 0,
+        "saves": 0,
+        "comments": 0,
+        "conversions": 0
+      },
+      "review": "AI 联网生成，已人工确认入池，待脚本和素材补充",
+      "sourceUrls": [
+        "https://www.instagram.com/p/DZWkUtDCZ-s"
+      ],
+      "recommendationScore": 75,
+      "aiGenerated": true,
+      "riskNotes": [
+        "避免过度解读新规细节，应以官方最终公告为准",
+        "不要传播恐慌，强调积极应对"
+      ]
+    },
+    {
+      "id": "topic-052",
+      "industry": "hotpot",
+      "title": "天然色素也不安全？火锅店汤底与蘸料采购的潜在健康地雷",
+      "column": "火锅店成本控制",
+      "topicCategory": "行业热点选题",
+      "contentType": "热点",
+      "targetUser": "火锅店老板 / 后厨负责人",
+      "painPoint": "消费者对健康饮食关注度提升，汤底蘸料中的色素添加可能引发食安质疑",
+      "businessLink": "火锅底料、蘸料产品的健康升级，清洁标签食材供应",
+      "hotSource": "《华尔街日报》报道法国研究指出，常见天然色素添加物与糖尿病、癌症风险增加有关；文学城转载该新闻",
+      "angle": "从采购角度，教老板如何审查调味料成分，避免高风险色素，同时保证卖相不影响",
+      "coreView": "不能盲目迷信“天然”标签，关键看加工方式与摄入量，尽量选择原色原味或零色素的调味方案",
+      "platform": "公众号 / 抖音",
+      "format": "科普+避坑型",
+      "scriptStatus": "未写",
+      "publishData": {
+        "views": 0,
+        "likes": 0,
+        "saves": 0,
+        "comments": 0,
+        "conversions": 0
+      },
+      "review": "AI 联网生成，已人工确认入池，待脚本和素材补充",
+      "sourceUrls": [
+        "https://www.wenxuecity.com/news/2026/05/21/126656298.html"
+      ],
+      "recommendationScore": 75,
+      "aiGenerated": true,
+      "riskNotes": [
+        "避免制造恐慌，强调合规使用的色素仍是安全的，只是提示过量风险",
+        "不推荐具体品牌，只提供通用判断方法"
+      ]
+    },
+    {
+      "id": "topic-053",
+      "industry": "hotpot",
+      "title": "中小火锅店如何用有限预算建立稳定的食材供应链？",
+      "column": "火锅店成本控制",
+      "topicCategory": "行业热点选题",
+      "contentType": "热点",
+      "targetUser": "火锅店老板 / 餐饮采购负责人",
+      "painPoint": "中小型门店采购量小、议价能力弱，食材品质和价格波动大，影响利润和复购",
+      "businessLink": "火锅食材供应链服务、中小门店专属供货方案",
+      "hotSource": "抖音热门视频“中小型火锅店该怎么做好食材供应链管理？”获831点赞、44评论，反映B端用户强烈关注",
+      "angle": "从选品精简、联合采购、稳定供应商合作三个维度，给出低成本优化供应链的方法",
+      "coreView": "供应链不是比谁买得便宜，而是比谁能持续稳定地给顾客好体验",
+      "platform": "抖音 / 视频号",
+      "format": "痛点解决型口播",
+      "scriptStatus": "未写",
+      "publishData": {
+        "views": 0,
+        "likes": 0,
+        "saves": 0,
+        "comments": 0,
+        "conversions": 0
+      },
+      "review": "AI 联网生成，已人工确认入池，待脚本和素材补充",
+      "sourceUrls": [],
+      "recommendationScore": 50,
+      "aiGenerated": true,
+      "riskNotes": [
+        "避免推荐具体供应商，只讲原则和判断标准",
+        "需结合真实案例，避免空泛"
+      ]
+    },
+    {
+      "id": "topic-054",
+      "industry": "hotpot",
+      "title": "火锅店虾滑怎么选？走量款、特色款、招牌款的搭配逻辑，帮后厨省工还提毛利",
+      "column": "火锅食材选品指南",
+      "topicCategory": "产品种草选题",
+      "contentType": "种草",
+      "targetUser": "火锅店老板",
+      "painPoint": "虾滑种类多，采购时只盯单价，忽略了出餐效率和毛利组合",
+      "businessLink": "关联供应链虾滑系列产品，帮助门店设计虾滑爆品组合",
+      "hotSource": "抖音热门视频「给火锅店的朋友们～虾滑怎么选、怎么搭？走量款、特色款、招牌款」点赞2916，评论25，反映门店对虾滑分类采购的强需求",
+      "angle": "从后厨出餐效率切入，讲透走量款（标准化）、特色款（引流）、招牌款（利润）的进出逻辑",
+      "coreView": "虾滑采购不是选最便宜的，而是按菜单角色分配走量、特色、招牌，让毛利和出餐速度双提升",
+      "platform": "抖音",
+      "format": "口播+产品陈列",
+      "scriptStatus": "未写",
+      "publishData": {
+        "views": 0,
+        "likes": 0,
+        "saves": 0,
+        "comments": 0,
+        "conversions": 0
+      },
+      "review": "AI 联网生成，已人工确认入池，待脚本和素材补充",
+      "sourceUrls": [],
+      "recommendationScore": 55,
+      "aiGenerated": true,
+      "riskNotes": []
+    },
+    {
+      "id": "topic-055",
+      "industry": "hotpot",
+      "title": "鲜毛肚怎么买才省人工？火锅店爆品食材的3个采购硬指标",
+      "column": "火锅食材选品指南",
+      "topicCategory": "产品种草选题",
+      "contentType": "种草",
+      "targetUser": "火锅店老板",
+      "painPoint": "毛肚处理费工、损耗高，采购只看价格却忽略了预处理成本和出成率",
+      "businessLink": "关联供应链鲜毛肚产品，突出预处理优势和稳定供应",
+      "hotSource": "抖音热门视频「为什么选择众仓鲜毛肚，能帮你省人工，控成本」点赞483，评论24，直接击中门店运营痛点",
+      "angle": "用省人工、控损耗的视角，拆解毛肚的采购标准——涨发率、预处理程度、规格稳定性",
+      "coreView": "毛肚爆品的底层逻辑是后厨不添乱，采购合格的预处理毛肚直接降低人工和废弃损耗",
+      "platform": "抖音",
+      "format": "实操对比+数据说明",
+      "scriptStatus": "未写",
+      "publishData": {
+        "views": 0,
+        "likes": 0,
+        "saves": 0,
+        "comments": 0,
+        "conversions": 0
+      },
+      "review": "AI 联网生成，已人工确认入池，待脚本和素材补充",
+      "sourceUrls": [],
+      "recommendationScore": 53,
+      "aiGenerated": true,
+      "riskNotes": []
+    },
+    {
+      "id": "topic-056",
+      "industry": "hotpot",
+      "title": "中小火锅店食材供应链破局：稳定供应比低价重要100倍",
+      "column": "火锅食材选品指南",
+      "topicCategory": "产品种草选题",
+      "contentType": "种草",
+      "targetUser": "火锅店老板",
+      "painPoint": "小店采购量小，供应不稳定导致主推菜断货，影响复购和口碑",
+      "businessLink": "关联供应链对中小火锅店的专属服务，如灵活起订量、稳定履约，帮小店锁住核心食材",
+      "hotSource": "抖音热门视频「中小型火锅店该怎么做好食材供应链管理？」点赞831，评论44，揭示小店供应链管理的高关注度",
+      "angle": "从断货对复购的伤害切入，讲清稳定供应如何成为小店的生命线，再带出产品矩阵中哪些品类需要优先保障",
+      "coreView": "小店拼的不是采购价，而是供应链的稳定性，核心爆品食材不断货才有复购和口碑",
+      "platform": "视频号",
+      "format": "痛点口播+场景演绎",
+      "scriptStatus": "未写",
+      "publishData": {
+        "views": 0,
+        "likes": 0,
+        "saves": 0,
+        "comments": 0,
+        "conversions": 0
+      },
+      "review": "AI 联网生成，已人工确认入池，待脚本和素材补充",
+      "sourceUrls": [],
+      "recommendationScore": 56,
+      "aiGenerated": true,
+      "riskNotes": []
+    },
+    {
+      "id": "topic-057",
+      "industry": "hotpot",
+      "title": "想学“5元素菜10元荤菜”模式？先算清食材成本、损耗和供应链这三笔账",
+      "column": "火锅店成本控制",
+      "topicCategory": "B端经营选题",
+      "contentType": "经营",
+      "targetUser": "火锅店老板",
+      "painPoint": "盲目跟风低价模式，忽视背后极致的成本控制和供应链要求，导致亏损。",
+      "businessLink": "我们的稳定供应链和标准化食材能为低价模式提供可靠的后端支持，帮助老板避免断供和品质波动。",
+      "hotSource": "抖音热门话题“素菜5块荤菜10块，具体该怎么落地”获赞1127、评论174，以及“5块10块火锅模式爆火？这3个坑踩一个赔一个”等视频，表明低价模式是当前火锅老板关注焦点。",
+      "angle": "从食材成本率、后厨损耗率、供应商稳定性三个维度拆解低价火锅可行门槛。",
+      "coreView": "低价不是简单地降低售价，而是需要每个环节的极致效率，尤其是食材成本必须控制在营收35%以下，且要有稳定低价的供应链支撑。",
+      "platform": "抖音 / 视频号",
+      "format": "口播+数据图表，1-2分钟",
+      "scriptStatus": "未写",
+      "publishData": {
+        "views": 0,
+        "likes": 0,
+        "saves": 0,
+        "comments": 0,
+        "conversions": 0
+      },
+      "review": "AI 联网生成，已人工确认入池，待脚本和素材补充",
+      "sourceUrls": [
+        "https://www.eats365pos.com/tw/blog/post/cost-structure-of-opening-a-restaurant",
+        "https://www.instagram.com/p/DZj-rhtlNus"
+      ],
+      "recommendationScore": 90,
+      "aiGenerated": true,
+      "riskNotes": [
+        "避免直接给出绝对的成本数字承诺，应强调根据门店情况调整"
+      ]
+    },
+    {
+      "id": "topic-058",
+      "industry": "hotpot",
+      "title": "火锅店最怕的不是没客人，是突然断货！如何判断供应商的稳定性？",
+      "column": "火锅店成本控制",
+      "topicCategory": "B端经营选题",
+      "contentType": "经营",
+      "targetUser": "火锅店老板 / 餐饮采购负责人",
+      "painPoint": "食材断供或品质波动严重影响门店运营和复购，但老板常只关注价格忽视稳定。",
+      "businessLink": "我们的供应链具备多仓储备和严格品控，可提供稳定供应承诺，并为客户提供应急备货方案。",
+      "hotSource": "Instagram餐饮社群热议‘餐厅最怕的不是没客人，是突然没货’，以及餐饮生蚝供应链文章强调稳定性的重要性。结合抖音‘开火锅店不能盲目控制成本’视频（赞354），多角度的供应链对话热度上升。",
+      "angle": "从供应商的资质、备货能力、应急方案三个角度教老板简单考察稳定性。",
+      "coreView": "选择供应商时，稳定供货能力和应急机制远比最低报价重要，因为一次断供损失的毛利远高于节省的采购成本。",
+      "platform": "抖音 / 视频号",
+      "format": "案例对比+讲解，1分钟",
+      "scriptStatus": "未写",
+      "publishData": {
+        "views": 0,
+        "likes": 0,
+        "saves": 0,
+        "comments": 0,
+        "conversions": 0
+      },
+      "review": "AI 联网生成，已人工确认入池，待脚本和素材补充",
+      "sourceUrls": [
+        "https://www.instagram.com/reel/DZFS-SjgKmx",
+        "http://www.e-bidding.org/shangxun/Article-3QITRA-297.html"
+      ],
+      "recommendationScore": 85,
+      "aiGenerated": true,
+      "riskNotes": [
+        "避免贬低其他供应商，用客观指标说话"
+      ]
+    },
+    {
+      "id": "topic-059",
+      "industry": "hotpot",
+      "title": "火锅店利润总卡在15%上不去？先搞懂固定成本与变动成本的优化顺序",
+      "column": "火锅店成本控制",
+      "topicCategory": "B端经营选题",
+      "contentType": "经营",
+      "targetUser": "火锅店老板",
+      "painPoint": "很多老板降本时先砍店员或减配，导致服务质量下降，利润却没提升，因为没有找对优化顺序。",
+      "businessLink": "我们提供的标准化食材和高出成率产品能帮助门店降低食材损耗和准备时间，直接优化变动成本，并间接节省人力。",
+      "hotSource": "抖音‘火锅店菜品份量要放多少？一个公式搞定！’（赞890）反映老板对成本控制的迫切需求；eats365文章详细分析了成本结构与优化策略，指出食材与人事成本总和应控制在60%以下。",
+      "angle": "用餐厅成本结构图，说明先优化变动成本（食材、损耗），再用效率工具优化固定成本（人力、租金）。",
+      "coreView": "健康的成本结构是食材<40%，人事<30%，固定成本<12%；优化顺序错了反而伤筋动骨。",
+      "platform": "小红书 / 公众号",
+      "format": "图文+成本结构图表",
+      "scriptStatus": "未写",
+      "publishData": {
+        "views": 0,
+        "likes": 0,
+        "saves": 0,
+        "comments": 0,
+        "conversions": 0
+      },
+      "review": "AI 联网生成，已人工确认入池，待脚本和素材补充",
+      "sourceUrls": [
+        "https://www.eats365pos.com/tw/blog/post/cost-structure-of-opening-a-restaurant"
+      ],
+      "recommendationScore": 92,
+      "aiGenerated": true,
+      "riskNotes": [
+        "数据参考普遍水平，需提醒老板结合实际情况"
+      ]
     }
   ],
   "scriptTemplates": [
@@ -1814,15 +2112,7 @@
         "食材组合案例",
         "失败案例/避坑案例"
       ],
-      "images": [
-        {
-          "id": "material-image-1781149984988-3dae6f35",
-          "productName": "海总",
-          "imageUrl": "/uploads/materials/material-003/material-image-1781149984988-3dae6f35-42b17c5e60002e1becb78bcdf2e19987.jpg",
-          "fileName": "material-image-1781149984988-3dae6f35-42b17c5e60002e1becb78bcdf2e19987.jpg",
-          "uploadedAt": "2026-06-11T03:53:04.989Z"
-        }
-      ]
+      "images": []
     },
     {
       "id": "material-004",

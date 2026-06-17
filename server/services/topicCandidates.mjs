@@ -2,6 +2,7 @@ import { readContent, writeContent } from "./contentStore.mjs";
 import { getIndustryProfile, getTopicColumnFallback, normalizeIndustryId } from "./industry.mjs";
 import { generateTopicCandidates } from "./llm.mjs";
 import { searchWeb } from "./search.mjs";
+import { searchDouyinVideos } from "./douyinService.mjs";
 
 const topicCategories = [
   "行业热点选题",
@@ -33,12 +34,25 @@ export async function generateCandidates(request) {
   const profile = getIndustryProfile(content, industry);
   const warnings = [];
   let sources = [];
+  let douyinVideos = [];
 
   try {
-    sources = await searchWeb({
-      query: buildCandidateSearchQuery(request, profile),
-      freshness: request.freshness,
-    });
+    const [webResults, videoResults] = await Promise.all([
+      searchWeb({
+        query: buildCandidateSearchQuery(request, profile),
+        freshness: request.freshness,
+      }),
+      searchDouyinVideos({
+        query: buildDouyinCandidateQuery(request, profile),
+        publishTime: freshnessToDouyinPublishTime(request.freshness),
+        maxResults: 10,
+      }).catch((err) => {
+        console.warn("[topic-candidates] 抖音搜索失败，继续主流程:", err.message);
+        return [];
+      }),
+    ]);
+    sources = webResults;
+    douyinVideos = videoResults;
   } catch (caught) {
     warnings.push(normalizeExternalErrorMessage(caught, "联网搜索失败，已改用本地资料生成候选。"));
     console.warn("[topic-candidates] search failed, fallback to local context:", caught?.message ?? caught);
@@ -51,6 +65,7 @@ export async function generateCandidates(request) {
     columns: content.columns,
     materials: content.materials,
     recentHotspots: content.hotspots,
+    douyinTrends: douyinVideos,
     existingTopics: content.topics.map((topic) => ({
       title: topic.title,
       topicCategory: topic.topicCategory,
@@ -144,6 +159,24 @@ function buildCandidateSearchQuery(request, profile) {
       .filter(Boolean)
       .join(" "),
   );
+}
+
+function buildDouyinCandidateQuery(request, profile) {
+  const intent = profile?.searchKeywords?.general ?? "";
+  const parts = [request.query, intent].filter(Boolean).join(" ");
+  const normalized = parts.replace(/\s+/g, " ").trim();
+  return normalized.length > 200 ? normalized.slice(0, 200) : normalized;
+}
+
+function freshnessToDouyinPublishTime(freshness) {
+  const map = {
+    noLimit: "_0",
+    oneDay: "_1",
+    oneWeek: "_7",
+    oneMonth: "_180",
+    oneYear: "_180",
+  };
+  return map[freshness] ?? "_0";
 }
 
 function normalizeCandidateResult({ request, sources, modelResult, warnings = [] }) {

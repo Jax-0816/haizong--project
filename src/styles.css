@@ -1550,17 +1550,41 @@ textarea {
 }
 
 .history-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
   width: 100%;
   border-radius: 18px;
-  padding: 14px 16px;
-  text-align: left;
 }
 
-.history-row strong {
+.history-row-content {
+  flex: 1;
+  min-width: 0;
+  padding: 14px 16px;
+  border-radius: 18px;
+  text-align: left;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+}
+
+.history-row-content strong {
   color: var(--text);
   font-size: 15px;
   font-weight: 600;
   line-height: 1.4;
+}
+
+.history-delete {
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.history-row:hover .history-delete {
+  opacity: 1;
 }
 
 .ghost-button {
