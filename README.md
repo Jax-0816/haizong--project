@@ -2,7 +2,7 @@
 
 > 🍲 餐饮、火锅与烧烤行业自媒体内容研究 & 创作工作台
 
-海宗是一个面向 B 端内容运营场景的本地 Web 项目，服务于火锅食材供应链账号的**选题 → 调研 → 脚本 → 素材 → 发布复盘**全流程。项目融合了行业热门话题自动化收集、AI 短视频脚本创作与数据整合能力，帮助内容团队高效产出高质量作品。
+海宗是一个面向 B 端内容运营场景的本地 Web 项目，服务于火锅食材供应链账号的**选题 → 调研 → 脚本 → 素材 → 发布复盘**全流程。项目融合了**抖音热搜追踪**、行业话题自动化收集、AI 短视频脚本创作与数据整合能力，帮助内容团队高效产出高质量作品。
 
 ---
 
@@ -10,9 +10,9 @@
 
 | 模块 | 说明 |
 | --- | --- |
-| **首页概览** | 内容决策驾驶舱：作品诊断、热点机会、AI 今日决策、AI 热点研判、AI 选题补全 |
-| **联网调研** | 输入主题 → Tavily 搜索 + DeepSeek 分析 → 摘要、匹配度、选题建议、风险提醒 |
-| **选题池** | 搜索 / 栏目 / 脚本状态多维筛选，联网候选生成，失败降级本地兜底 |
+| **首页概览** | 内容决策驾驶舱：作品诊断、热点机会、AI 今日决策、AI 热点研判、AI 选题补全、**一周发布计划智能生成与刷新** |
+| **联网调研** | 输入主题 → 🎵 抖音 + Tavily 双源搜索 + DeepSeek 分析 → 摘要、匹配度、选题建议、风险提醒 |
+| **选题池** | 搜索 / 栏目 / 脚本状态多维筛选，**三源管线（抖音视频 + Tavily 网页 + DeepSeek）**联网候选生成，失败自动降级本地兜底 |
 | **内容生产台** | 单选题全流程：调研 → 脚本 → 素材 → 发布复盘，支持保存脚本到模板库 |
 | **脚本模板** | 痛点型、清单型、避坑型、案例型、爆品推荐型等结构化脚本模板 |
 | **提示词库** | AI 辅助创作提示词展示与一键复制 |
@@ -33,7 +33,9 @@ haizong--project/
 │   └── data/content.json   # 静态业务数据源
 ├── server/                 # 本地 Node API 代理与业务服务
 │   ├── dev.mjs             # Vite middleware + API 路由
-│   └── services/           # Tavily 搜索、DeepSeek LLM、调研编排、认证、生产台
+│   ├── app.mjs             # 独立生产服务入口
+│   └── services/           # 抖音搜索、Tavily 搜索、DeepSeek LLM、调研编排、认证、生产台
+│       ├── douyinService.mjs   # JustOneAPI 抖音视频搜索封装
 ├── public/                 # 静态资源与登录页
 ├── scripts/                # 双平台底层启动脚本
 ├── launchers/              # 桌面快捷启动器安装脚本
@@ -59,7 +61,8 @@ haizong--project/
 | 前端框架 | Vite + React + TypeScript |
 | 样式 | CSS（Serenity / Apple 混合风格） |
 | 后端服务 | Node.js HTTP Server + Vite Middleware |
-| AI 搜索 | [Tavily Search API](https://tavily.com/) |
+| 抖音搜索 | JustOneAPI 抖音视频搜索 V4（综合 / 点赞 / 最新排序；发布时间过滤） |
+| AI 搜索 | [Tavily Search API](https://tavily.com/) 网页搜索 |
 | AI 对话 | [DeepSeek](https://deepseek.com/) OpenAI-compatible Chat API |
 | 数据存储 | 静态 JSON + 本地文件 + localStorage 会话 |
 
@@ -114,6 +117,9 @@ DEEPSEEK_API_KEY=your_deepseek_api_key
 DEEPSEEK_BASE_URL=https://api.deepseek.com
 DEEPSEEK_MODEL=deepseek-chat
 
+JUSTONEAPI_TOKEN=your_justoneapi_token
+JUSTONEAPI_BASE_URL=http://47.117.133.51:30015
+
 AUTH_ADMIN_PHONE=13800000000
 AUTH_ADMIN_DISPLAY_NAME=海总管理员
 AUTH_TOKEN_SECRET=replace_with_a_long_random_secret
@@ -126,10 +132,11 @@ AUTH_CODE_TTL_MS=300000
 ## 📡 API 接口
 
 ```text
-POST /api/research                       联网调研
-POST /api/topic-candidates/generate      选题候选生成
-POST /api/topics/refresh                 选题池刷新
+POST /api/research                       联网调研（🎵 抖音 + Tavily 双源）
+POST /api/topic-candidates/generate      选题候选生成（三源管线：抖音 + Tavily + DeepSeek）
+POST /api/topics/refresh                 选题池刷新（生成一周发布计划）
 POST /api/topics/confirm                 候选确认入池
+POST /api/douyin/search                  抖音视频搜索（独立接口）
 POST /api/production/save                生产台保存
 POST /api/production/research            生产台调研
 POST /api/production/generate-script     脚本生成
