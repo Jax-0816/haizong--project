@@ -14,6 +14,7 @@
 | 字段 | 类型 | 必填 | 说明 |
 | --- | --- | --- | --- |
 | `positioning` | `Positioning` | 是 | 账号定位 |
+| `industryProfiles` | `IndustryProfile[]` | 是 | 火锅/烧烤等行业配置与首页展示配置 |
 | `columns` | `string[]` | 是 | 内容栏目列表 |
 | `topics` | `Topic[]` | 是 | 选题池 |
 | `scriptTemplates` | `ScriptTemplate[]` | 是 | 脚本模板 |
@@ -70,6 +71,12 @@
 | `style` | `string` | 内容表达风格 |
 | `platforms` | `string[]` | 运营平台 |
 | `conversionGoal` | `string` | 转化目标 |
+
+### `IndustryProfile`
+
+`industryProfiles` 保存不同行业的账号定位、默认表单值、首页展示内容和搜索关键词。首页每日刷新只允许更新对应行业的 `dashboard.heroTopic`、`dashboard.weeklyPlan` 和 `dashboard.lastRefreshedAt`，不要改写指标卡、工作流和资产库说明。
+
+`dashboard.lastRefreshedAt` 为可选 ISO 时间字符串，用于记录首页“今日刷新”的最近写回时间。
 
 ### `Topic`
 
@@ -130,12 +137,38 @@
 ```ts
 {
   id: string;
+  category: "选题扩展" | "脚本生成" | "复盘拆解";
   purpose: string;
   audience: string;
-  body: string;
+  summary: string;
+  template: string;
   outputFields: string[];
+  fields: PromptFieldDefinition[];
+  industry?: "hotpot" | "bbq";
 }
 ```
+
+### `PromptFieldDefinition`
+
+```ts
+{
+  key: string;
+  label: string;
+  inputType: "text" | "textarea" | "number";
+  required: boolean;
+  placeholder: string;
+  source: "manual" | "topic" | "industry";
+}
+```
+
+`fields` 用来驱动提示词库的可填写表单。约定如下：
+
+- `key` 必须稳定，并与前端可带入的字段名一致，例如 `title`、`targetUser`、`painPoint`、`angle`、`businessLink`、`accountPositioning`、`platforms`
+- `source: "topic"` 表示默认从当前行业下已选 `Topic` 自动带入
+- `source: "industry"` 表示默认从当前 `industryProfiles` 自动带入
+- `source: "manual"` 表示默认留空，由用户填写
+- `template` 中允许使用 `{{变量名}}` 占位符，变量名应与 `fields.key` 一一对应
+- `summary` 用于提示模板用途，`template` 才是最终生成 Prompt 的正文
 
 ### `MaterialSection`
 

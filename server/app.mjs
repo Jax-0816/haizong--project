@@ -13,12 +13,12 @@ import {
   saveProduction,
 } from "./services/production.mjs";
 import { runResearch } from "./services/research.mjs";
-import { confirmTopic, generateCandidates, getTopicCategories, refreshCandidates } from "./services/topicCandidates.mjs";
+import { confirmTopic, deleteTopic, generateCandidates, getTopicCategories, refreshCandidates } from "./services/topicCandidates.mjs";
 import { expandMaterialPhrases, refreshScriptTemplate } from "./services/llm.mjs";
 import { getAppRuntimeConfig } from "./runtimeConfig.mjs";
 import { normalizeIndustryId } from "./services/industry.mjs";
 import { searchDouyinVideos } from "./services/douyinService.mjs";
-import { refreshWeeklyPlan } from "./services/weeklyPlan.mjs";
+import { refreshDashboardDaily, refreshWeeklyPlan } from "./services/weeklyPlan.mjs";
 import {
   deleteAuthUser,
   getCurrentUserFromRequest,
@@ -140,6 +140,13 @@ export function createAppHandler(options = {}) {
         return;
       }
 
+      if (req.method === "POST" && pathname === "/api/topics/delete") {
+        const body = await readJsonBody(req);
+        const result = deleteTopic(body);
+        sendJson(res, 200, result);
+        return;
+      }
+
       if (req.method === "POST" && pathname === "/api/production/save") {
         const body = await readJsonBody(req);
         const result = saveProduction(body);
@@ -226,6 +233,14 @@ export function createAppHandler(options = {}) {
         const body = await readJsonBody(req);
         const industry = String(body.industry ?? "hotpot").trim();
         const result = await refreshWeeklyPlan({ industry });
+        sendJson(res, 200, result);
+        return;
+      }
+
+      if (req.method === "POST" && pathname === "/api/dashboard/daily-refresh") {
+        const body = await readJsonBody(req);
+        const industry = String(body.industry ?? "hotpot").trim();
+        const result = await refreshDashboardDaily({ industry });
         sendJson(res, 200, result);
         return;
       }

@@ -60,10 +60,10 @@
         "heroTitle": "今天先看机会，再决定做什么内容",
         "heroDescription": "围绕火锅食材供应链账号，结合 B 端用户痛点、节气热点、行业趋势和产品资料，生成更适合发布的选题、脚本和内容方向。",
         "heroTopic": {
-          "title": "餐饮寒冬下，火锅店应该保留哪些高复购食材？",
+          "title": "端午前火锅店备货，除了肉还要准备哪几类加购菜？",
           "targetUser": "火锅店老板",
-          "contentType": "经营痛点",
-          "productAssociation": "毛肚、鸭肠、丸滑、小吃甜品",
+          "contentType": "节日备货清单，强调小吃甜品、丸滑类加购，提升客单价",
+          "productAssociation": "夏季火锅淡季低成本高感知食材组合（冰粉、冷锅、小吃）",
           "platform": "抖音 / 视频号"
         },
         "stats": [
@@ -177,29 +177,40 @@
           {
             "day": "周一",
             "theme": "行业热点 / 经营判断",
-            "output": "餐饮寒冬下的高复购食材判断"
+            "output": "夏季火锅淡季，用低成本高感知食材稳住客流和毛利",
+            "topicId": "topic-041",
+            "reason": "紧扣淡季经营痛点，提供低成本食材策略，符合行业热点与经营判断定位。"
           },
           {
             "day": "周二",
             "theme": "产品选品指南",
-            "output": "毛肚、鸭肠、丸滑的门店价值对比"
+            "output": "火锅店虾滑怎么选？走量款、特色款、招牌款的搭配逻辑，帮后厨省工还提毛利",
+            "topicId": "topic-054",
+            "reason": "以虾滑为例输出选品搭配逻辑，直击采购选品痛点，实用指导性强。"
           },
           {
             "day": "周三",
-            "theme": "火锅店痛点解决",
-            "output": "菜单越厚利润越低的结构诊断"
+            "theme": "痛点解决",
+            "output": "为什么有些菜品看起来便宜，实际损耗很高",
+            "topicId": "topic-013",
+            "reason": "揭示食材隐形损耗，帮助老板算清综合成本，解决采购常见痛点。"
           },
           {
             "day": "周四",
             "theme": "案例拆解",
-            "output": "高客单套餐如何不增加后厨压力"
+            "output": "餐饮会销案例拆解：火锅食材供应商如何帮门店设计高复购爆品组合",
+            "topicId": "topic-022",
+            "reason": "拆解会销模式，输出可复用的爆品组合案例，符合案例拆解主题。"
           },
           {
             "day": "周五",
             "theme": "节日借势 / 套餐建议",
-            "output": "节前备货清单和小吃甜品加购"
+            "output": "端午小长假备货，火锅店老板如何用高毛利食材设计节日引流套餐",
+            "topicId": "topic-021",
+            "reason": "借势端午小长假，提供节日套餐设计思路，精准匹配节日借势需求。"
           }
-        ]
+        ],
+        "lastRefreshedAt": "2026-06-18T06:25:09.681Z"
       },
       "searchKeywords": {
         "dashboardDecision": "餐饮 火锅 供应链 经营 趋势 内容选题",
@@ -1861,6 +1872,105 @@
       "riskNotes": [
         "数据参考普遍水平，需提醒老板结合实际情况"
       ]
+    },
+    {
+      "id": "topic-060",
+      "industry": "hotpot",
+      "title": "火锅食材供应：如何避开“缺货断货”和“压库存”两大坑？",
+      "column": "食材供应链知识",
+      "topicCategory": "系列化选题",
+      "contentType": "系列",
+      "targetUser": "火锅店老板、餐饮采购负责人",
+      "painPoint": "缺货影响营业，压货占用资金，补货不及时导致客流流失",
+      "businessLink": "强调供应链服务的库存管理支持能力，如定期配货、应急补货和滞销品处理方案，促进采购线索转化。",
+      "hotSource": "根据Instagram餐饮供应链服务商广告中反映的常见备货痛点（来源：Instagram），结合抖音上“餐饮供应链内卷”热议话题，提炼门店高频库存管理难题。",
+      "angle": "从门店备货的两个极端问题出发，给出选择供应商的关键标准：稳定性、弹性供货能力和退换货机制。",
+      "coreView": "老板要建立科学的备货策略，选择能提供小批量、高频次、稳定品质的供应商，而不是一味追求低价或大批量囤货。",
+      "platform": "抖音",
+      "format": "痛点解决方案",
+      "scriptStatus": "未写",
+      "publishData": {
+        "views": 0,
+        "likes": 0,
+        "saves": 0,
+        "comments": 0,
+        "conversions": 0
+      },
+      "review": "AI 联网生成，已人工确认入池，待脚本和素材补充",
+      "sourceUrls": [
+        "https://www.instagram.com/reel/DZFS-SjgKmx"
+      ],
+      "recommendationScore": 65,
+      "aiGenerated": true,
+      "riskNotes": [
+        "避免直接推广特定供应商",
+        "需结合行业通用知识，给出可落地的判断方法"
+      ]
+    },
+    {
+      "id": "topic-061",
+      "industry": "bbq",
+      "title": "抖音爆款背后：从‘摆摊拿货’看餐饮老板如何找到靠谱的一手货源",
+      "column": "食材供应链知识",
+      "topicCategory": "系列化选题",
+      "contentType": "系列",
+      "targetUser": "新开店老板、餐饮采购负责人",
+      "painPoint": "不知道去哪里找稳定、高品质、价格合理的一手货源，往往被中间商层层加价，或者遇到不稳定的供应商",
+      "businessLink": "以自身为例，展示本公司是如何做到一手货源与稳定供应的，提供验厂报告或样品试单机会",
+      "hotSource": "抖音热门视频‘摆摊卖烧烤食材和酱料去哪拿货？’获赞 4.6 万，评论区大量询问货源，反映市场强烈寻找靠谱供应链的痛点；另结合 Instagram 供应商宣传的‘第一手货源’概念",
+      "angle": "以抖音爆款话题切入，拆解老板找货源时常犯的 3 个错误，给出验证供应商稳定性的 5 个实用指标，并说明一手货源不等于最便宜，而是可持续的优质供应",
+      "coreView": "找货源不能只看价格，更要看供应商的资质、供货稳定性、品质一致性、售后响应和长期合作意愿；真正的‘一手货源’是能让门店安心经营、不怕断货的合作伙伴",
+      "platform": "抖音",
+      "format": "口播 + 探厂素材（仓库、加工车间）",
+      "scriptStatus": "未写",
+      "publishData": {
+        "views": 0,
+        "likes": 0,
+        "saves": 0,
+        "comments": 0,
+        "conversions": 0
+      },
+      "review": "AI 联网生成，已人工确认入池，待脚本和素材补充",
+      "sourceUrls": [
+        "https://www.instagram.com/reel/DZFS-SjgKmx"
+      ],
+      "recommendationScore": 85,
+      "aiGenerated": true,
+      "riskNotes": [
+        "避免直接贬低其他中间商，要侧重专业判断方法的传递",
+        "抖音趋势热度虽高，但选题需始终保持 B 端专业调性，避免变成消费者式的种草"
+      ]
+    },
+    {
+      "id": "topic-062",
+      "industry": "hotpot",
+      "title": "餐饮寒冬下，火锅店应该保留哪些高复购食材？",
+      "column": "火锅食材选品指南",
+      "topicCategory": "行业热点选题",
+      "contentType": "热点",
+      "targetUser": "火锅店老板",
+      "painPoint": "经营痛点",
+      "businessLink": "毛肚、鸭肠、丸滑、小吃甜品",
+      "hotSource": "首页每日刷新",
+      "angle": "经营痛点",
+      "coreView": "餐饮寒冬下，火锅店应该保留哪些高复购食材？",
+      "platform": "抖音 / 视频号",
+      "format": "口播/图文",
+      "scriptStatus": "未写",
+      "publishData": {
+        "views": 0,
+        "likes": 0,
+        "saves": 0,
+        "comments": 0,
+        "conversions": 0
+      },
+      "review": "AI 联网生成，已人工确认入池，待脚本和素材补充",
+      "sourceUrls": [],
+      "recommendationScore": 78,
+      "aiGenerated": true,
+      "riskNotes": [
+        "首页推荐为 AI 联网研判结果，入池后仍需人工补充资料和审核表达。"
+      ]
     }
   ],
   "scriptTemplates": [
@@ -2008,9 +2118,11 @@
   "prompts": [
     {
       "id": "prompt-001",
-      "purpose": "批量生成选题",
-      "audience": "火锅店老板",
-      "body": "你是一个火锅食材B端自媒体选题策划，请围绕【火锅店老板】这个用户群体，结合【餐饮寒冬、成本控制、菜品创新、供应链稳定】这几个关键词，生成20个适合短视频账号发布的选题。要求：每个选题要有B端业务价值，不要写成普通消费者种草内容，选题要能延展成系列内容。",
+      "category": "选题扩展",
+      "purpose": "批量生成经营选题",
+      "audience": "内容运营 / 账号策划",
+      "summary": "围绕一个经营主题，批量产出适合当前行业账号发布的 B 端选题。",
+      "template": "你是一个{{accountPositioning}}的内容策划，请围绕【{{query}}】这个主题，面向【{{targetUser}}】生成 12 个适合短视频账号发布的选题。当前重点痛点是【{{painPoint}}】，业务关联是【{{businessLink}}】，内容表达风格为【{{accountStyle}}】。要求：每个选题都要体现 B 端经营价值，不要写成普通消费者种草内容；优先考虑适合【{{platforms}}】发布的表达；输出要能延展成系列内容。",
       "outputFields": [
         "标题",
         "目标用户",
@@ -2018,59 +2130,610 @@
         "内容角度",
         "产品关联",
         "脚本方向"
+      ],
+      "fields": [
+        {
+          "key": "query",
+          "label": "核心主题",
+          "inputType": "text",
+          "required": true,
+          "placeholder": "例如：餐饮淡季怎么保利润",
+          "source": "topic"
+        },
+        {
+          "key": "targetUser",
+          "label": "目标用户",
+          "inputType": "text",
+          "required": true,
+          "placeholder": "例如：火锅店老板",
+          "source": "topic"
+        },
+        {
+          "key": "painPoint",
+          "label": "核心痛点",
+          "inputType": "textarea",
+          "required": true,
+          "placeholder": "例如：客流波动大，但高复购菜品结构不清晰",
+          "source": "topic"
+        },
+        {
+          "key": "businessLink",
+          "label": "业务关联",
+          "inputType": "textarea",
+          "required": true,
+          "placeholder": "例如：爆品食材、套餐结构、后厨效率",
+          "source": "topic"
+        },
+        {
+          "key": "accountPositioning",
+          "label": "账号定位",
+          "inputType": "textarea",
+          "required": true,
+          "placeholder": "例如：火锅食材供应链服务型账号",
+          "source": "industry"
+        },
+        {
+          "key": "accountStyle",
+          "label": "表达风格",
+          "inputType": "textarea",
+          "required": true,
+          "placeholder": "例如：专业直接，重经营判断",
+          "source": "industry"
+        },
+        {
+          "key": "platforms",
+          "label": "重点平台",
+          "inputType": "text",
+          "required": true,
+          "placeholder": "例如：抖音、视频号",
+          "source": "industry"
+        }
       ]
     },
     {
       "id": "prompt-002",
+      "category": "选题扩展",
       "purpose": "扩展系列选题",
-      "audience": "内容运营",
-      "body": "请把选题【输入选题】扩展成一个5集短视频系列。每集都要有递进关系，围绕同一个B端经营问题展开，避免重复表达。",
+      "audience": "内容运营 / 编导",
+      "summary": "把一个核心选题拆成递进式系列内容，避免每一集都讲重复的话。",
+      "template": "请把选题【{{coreTopic}}】扩展成一个 5 集短视频系列，面向【{{targetUser}}】。该系列要围绕【{{painPoint}}】展开，以【{{angle}}】为总切入角度，保证每一集都有递进关系，并且能自然带出【{{businessLink}}】。表达风格保持【{{accountStyle}}】，优先适配【{{platforms}}】。请不要重复表达，要让每一集都具备单独发布价值。",
       "outputFields": [
         "集数",
         "标题",
         "核心观点",
         "脚本结构",
         "适合平台"
+      ],
+      "fields": [
+        {
+          "key": "coreTopic",
+          "label": "核心选题",
+          "inputType": "text",
+          "required": true,
+          "placeholder": "例如：餐饮寒冬下哪些食材必须保留",
+          "source": "topic"
+        },
+        {
+          "key": "targetUser",
+          "label": "目标用户",
+          "inputType": "text",
+          "required": true,
+          "placeholder": "例如：餐饮老板",
+          "source": "topic"
+        },
+        {
+          "key": "painPoint",
+          "label": "系列围绕的痛点",
+          "inputType": "textarea",
+          "required": true,
+          "placeholder": "例如：不知道该删什么菜、留什么菜",
+          "source": "topic"
+        },
+        {
+          "key": "angle",
+          "label": "总切入角度",
+          "inputType": "textarea",
+          "required": true,
+          "placeholder": "例如：从利润结构和复购效率来判断",
+          "source": "topic"
+        },
+        {
+          "key": "businessLink",
+          "label": "产品或业务关联",
+          "inputType": "textarea",
+          "required": true,
+          "placeholder": "例如：毛肚、鸭肠、丸滑、小吃甜品",
+          "source": "topic"
+        },
+        {
+          "key": "accountStyle",
+          "label": "表达风格",
+          "inputType": "textarea",
+          "required": true,
+          "placeholder": "例如：少空泛种草，多经营判断",
+          "source": "industry"
+        },
+        {
+          "key": "platforms",
+          "label": "重点平台",
+          "inputType": "text",
+          "required": true,
+          "placeholder": "例如：抖音、视频号",
+          "source": "industry"
+        }
       ]
     },
     {
       "id": "prompt-003",
-      "purpose": "生成口播脚本",
-      "audience": "短视频编导",
-      "body": "请根据选题【输入选题】生成一条60秒以内的火锅食材B端账号口播脚本。要求开头有钩子，中间讲清经营逻辑，结尾引导老板留言门店情况，语气专业直接，不要过度营销。",
+      "category": "选题扩展",
+      "purpose": "同题差异化改写",
+      "audience": "内容运营 / 选题编辑",
+      "summary": "把已有选题换一个切法，避免同一主题反复撞车。",
+      "template": "请围绕选题【{{coreTopic}}】输出 6 个差异化改写版本，面向【{{targetUser}}】。原始痛点是【{{painPoint}}】，现有表达角度是【{{angle}}】，业务关联是【{{businessLink}}】。要求：新的 6 个版本必须保持 B 端经营价值，但切入方式、标题钩子、论证重点都要明显不同；不要脱离【{{accountPositioning}}】的定位；保持【{{accountStyle}}】风格。",
       "outputFields": [
-        "开头钩子",
-        "正文脚本",
-        "产品关联",
-        "评论区引导"
+        "新标题",
+        "差异化角度",
+        "适合平台",
+        "为什么能和原题拉开差异"
+      ],
+      "fields": [
+        {
+          "key": "coreTopic",
+          "label": "原始选题",
+          "inputType": "text",
+          "required": true,
+          "placeholder": "例如：菜单越厚利润越低",
+          "source": "topic"
+        },
+        {
+          "key": "targetUser",
+          "label": "目标用户",
+          "inputType": "text",
+          "required": true,
+          "placeholder": "例如：火锅店老板",
+          "source": "topic"
+        },
+        {
+          "key": "painPoint",
+          "label": "原题痛点",
+          "inputType": "textarea",
+          "required": true,
+          "placeholder": "例如：不知道怎么删菜，什么都想留",
+          "source": "topic"
+        },
+        {
+          "key": "angle",
+          "label": "现有角度",
+          "inputType": "textarea",
+          "required": true,
+          "placeholder": "例如：从利润结构看菜单冗余",
+          "source": "topic"
+        },
+        {
+          "key": "businessLink",
+          "label": "业务关联",
+          "inputType": "textarea",
+          "required": true,
+          "placeholder": "例如：高复购食材、套餐搭配、后厨效率",
+          "source": "topic"
+        },
+        {
+          "key": "accountPositioning",
+          "label": "账号定位",
+          "inputType": "textarea",
+          "required": true,
+          "placeholder": "例如：餐饮供应链经营型账号",
+          "source": "industry"
+        },
+        {
+          "key": "accountStyle",
+          "label": "表达风格",
+          "inputType": "textarea",
+          "required": true,
+          "placeholder": "例如：专业、直接、强调判断",
+          "source": "industry"
+        }
       ]
     },
     {
       "id": "prompt-004",
-      "purpose": "拆解爆款结构",
-      "audience": "账号运营",
-      "body": "请分析这条历史内容【粘贴内容或数据】，拆解它为什么表现好或不好，并给出下一条可延展选题。",
+      "category": "脚本生成",
+      "purpose": "60 秒口播脚本",
+      "audience": "短视频编导",
+      "summary": "围绕当前选题生成一条可拍、可讲、可带评论引导的 60 秒内口播脚本。",
+      "template": "请根据选题【{{title}}】生成一条 60 秒以内的{{industryLabel}}食材 B 端账号口播脚本。目标用户是【{{targetUser}}】，核心痛点是【{{painPoint}}】，内容角度是【{{angle}}】，业务关联是【{{businessLink}}】。请保持【{{accountStyle}}】的语气，优先适配【{{platform}}】发布。要求：开头必须有钩子，中段讲清经营逻辑，结尾引导老板留言自己的门店情况，不要过度营销。",
+      "outputFields": [
+        "开头钩子",
+        "正文结构",
+        "口播全文",
+        "评论区引导"
+      ],
+      "fields": [
+        {
+          "key": "title",
+          "label": "选题标题",
+          "inputType": "text",
+          "required": true,
+          "placeholder": "例如：淡季里哪些食材不能轻易砍",
+          "source": "topic"
+        },
+        {
+          "key": "targetUser",
+          "label": "目标用户",
+          "inputType": "text",
+          "required": true,
+          "placeholder": "例如：火锅店老板",
+          "source": "topic"
+        },
+        {
+          "key": "painPoint",
+          "label": "核心痛点",
+          "inputType": "textarea",
+          "required": true,
+          "placeholder": "例如：一味压成本，反而把高复购菜品砍掉",
+          "source": "topic"
+        },
+        {
+          "key": "angle",
+          "label": "内容角度",
+          "inputType": "textarea",
+          "required": true,
+          "placeholder": "例如：从复购和毛利一起看保留逻辑",
+          "source": "topic"
+        },
+        {
+          "key": "businessLink",
+          "label": "业务关联",
+          "inputType": "textarea",
+          "required": true,
+          "placeholder": "例如：核心单品、套餐结构、后厨标准化",
+          "source": "topic"
+        },
+        {
+          "key": "platform",
+          "label": "发布平台",
+          "inputType": "text",
+          "required": true,
+          "placeholder": "例如：抖音",
+          "source": "topic"
+        },
+        {
+          "key": "industryLabel",
+          "label": "行业标签",
+          "inputType": "text",
+          "required": true,
+          "placeholder": "例如：火锅",
+          "source": "industry"
+        },
+        {
+          "key": "accountStyle",
+          "label": "表达风格",
+          "inputType": "textarea",
+          "required": true,
+          "placeholder": "例如：专业直接，不要过度营销",
+          "source": "industry"
+        }
+      ]
+    },
+    {
+      "id": "prompt-005",
+      "category": "脚本生成",
+      "purpose": "清单型脚本生成",
+      "audience": "短视频编导 / 账号运营",
+      "summary": "把一个选题输出成清单型表达，适合老板快速看懂和收藏。",
+      "template": "请把选题【{{title}}】写成一条清单型短视频脚本，面向【{{targetUser}}】。这条内容要围绕【{{coreView}}】展开，结合【{{businessLink}}】做举例，并保持【{{accountStyle}}】的表达。发布平台优先考虑【{{platform}}】，内容形式为【{{format}}】。要求：脚本结构清晰，最好能拆成 3 到 5 个清单项，每一项都要有经营判断和落地建议。",
+      "outputFields": [
+        "清单标题",
+        "3-5 个清单点",
+        "每点解释",
+        "结尾引导"
+      ],
+      "fields": [
+        {
+          "key": "title",
+          "label": "选题标题",
+          "inputType": "text",
+          "required": true,
+          "placeholder": "例如：高复购食材怎么保留",
+          "source": "topic"
+        },
+        {
+          "key": "targetUser",
+          "label": "目标用户",
+          "inputType": "text",
+          "required": true,
+          "placeholder": "例如：餐饮采购负责人",
+          "source": "topic"
+        },
+        {
+          "key": "coreView",
+          "label": "核心观点",
+          "inputType": "textarea",
+          "required": true,
+          "placeholder": "例如：不要只看进货价，要看带来的复购和加购",
+          "source": "topic"
+        },
+        {
+          "key": "businessLink",
+          "label": "举例的产品或业务",
+          "inputType": "textarea",
+          "required": true,
+          "placeholder": "例如：毛肚、丸滑、小吃甜品、套餐组合",
+          "source": "topic"
+        },
+        {
+          "key": "platform",
+          "label": "发布平台",
+          "inputType": "text",
+          "required": true,
+          "placeholder": "例如：视频号",
+          "source": "topic"
+        },
+        {
+          "key": "format",
+          "label": "内容形式",
+          "inputType": "text",
+          "required": true,
+          "placeholder": "例如：口播清单 / 对比讲解",
+          "source": "topic"
+        },
+        {
+          "key": "accountStyle",
+          "label": "表达风格",
+          "inputType": "textarea",
+          "required": true,
+          "placeholder": "例如：专业直接，少空话",
+          "source": "industry"
+        }
+      ]
+    },
+    {
+      "id": "prompt-006",
+      "category": "脚本生成",
+      "purpose": "老板避坑型脚本",
+      "audience": "短视频编导 / 账号策划",
+      "summary": "围绕经营误区做避坑表达，适合高互动和评论区讨论。",
+      "template": "请根据选题【{{title}}】生成一条“老板避坑型”短视频脚本，目标用户是【{{targetUser}}】。内容要围绕【{{painPoint}}】这个误区展开，结合【{{hotSource}}】说明为什么现在更值得提醒，再把【{{businessLink}}】自然带入。语气保持【{{accountStyle}}】，适配【{{platform}}】。要求：开头直接指出误区，中段说明后果和判断逻辑，结尾给出一个可执行建议并引导评论。",
+      "outputFields": [
+        "误区钩子",
+        "错误后果",
+        "正确做法",
+        "评论区问题"
+      ],
+      "fields": [
+        {
+          "key": "title",
+          "label": "选题标题",
+          "inputType": "text",
+          "required": true,
+          "placeholder": "例如：淡季别盲目砍菜",
+          "source": "topic"
+        },
+        {
+          "key": "targetUser",
+          "label": "目标用户",
+          "inputType": "text",
+          "required": true,
+          "placeholder": "例如：新开店老板",
+          "source": "topic"
+        },
+        {
+          "key": "painPoint",
+          "label": "要提醒的误区",
+          "inputType": "textarea",
+          "required": true,
+          "placeholder": "例如：只看单品毛利，不看整桌带动",
+          "source": "topic"
+        },
+        {
+          "key": "hotSource",
+          "label": "背景来源",
+          "inputType": "textarea",
+          "required": true,
+          "placeholder": "例如：最近门店都在讨论淡季压货和删菜",
+          "source": "topic"
+        },
+        {
+          "key": "businessLink",
+          "label": "业务关联",
+          "inputType": "textarea",
+          "required": true,
+          "placeholder": "例如：高复购单品、菜单结构、供应链稳定性",
+          "source": "topic"
+        },
+        {
+          "key": "platform",
+          "label": "发布平台",
+          "inputType": "text",
+          "required": true,
+          "placeholder": "例如：抖音",
+          "source": "topic"
+        },
+        {
+          "key": "accountStyle",
+          "label": "表达风格",
+          "inputType": "textarea",
+          "required": true,
+          "placeholder": "例如：像老板之间交流一样直接",
+          "source": "industry"
+        }
+      ]
+    },
+    {
+      "id": "prompt-007",
+      "category": "复盘拆解",
+      "purpose": "爆款结构复盘",
+      "audience": "账号运营 / 复盘分析",
+      "summary": "拆一条历史内容为什么表现好或不好，并沉淀下一步可复用结论。",
+      "template": "请分析这条历史内容【{{historicalContent}}】。它面向【{{targetUser}}】，业务关联是【{{businessLink}}】，当前数据表现为【{{performanceData}}】。请从选题、开头钩子、论证结构、评论引导、平台适配五个维度判断它为什么表现好或不好，并结合【{{accountPositioning}}】的定位给出下一步优化建议。结论要保持 B 端经营价值，不要泛泛而谈。",
       "outputFields": [
         "表现判断",
         "有效结构",
         "问题点",
         "可复用表达",
-        "下一条选题"
+        "下一步优化"
+      ],
+      "fields": [
+        {
+          "key": "historicalContent",
+          "label": "历史内容或脚本",
+          "inputType": "textarea",
+          "required": true,
+          "placeholder": "粘贴标题、脚本摘要或链接说明",
+          "source": "manual"
+        },
+        {
+          "key": "targetUser",
+          "label": "目标用户",
+          "inputType": "text",
+          "required": true,
+          "placeholder": "例如：火锅店老板",
+          "source": "topic"
+        },
+        {
+          "key": "businessLink",
+          "label": "业务关联",
+          "inputType": "textarea",
+          "required": true,
+          "placeholder": "例如：爆品食材、套餐、供应链稳定",
+          "source": "topic"
+        },
+        {
+          "key": "performanceData",
+          "label": "表现数据",
+          "inputType": "textarea",
+          "required": true,
+          "placeholder": "例如：播放 3 万，点赞 1200，评论 96，转化 18",
+          "source": "topic"
+        },
+        {
+          "key": "accountPositioning",
+          "label": "账号定位",
+          "inputType": "textarea",
+          "required": true,
+          "placeholder": "例如：火锅食材供应链经营型账号",
+          "source": "industry"
+        }
       ]
     },
     {
-      "id": "prompt-005",
-      "industry": "bbq",
-      "purpose": "批量生成烧烤选题",
-      "audience": "烧烤店老板",
-      "body": "你是一个烧烤食材B端自媒体选题策划，请围绕【烧烤店老板】这个用户群体，结合【夜宵旺季、成本控制、串品标准化、供应链稳定】这几个关键词，生成20个适合短视频账号发布的选题。要求：每个选题要有B端业务价值，不要写成普通消费者种草内容，选题要能延展成系列内容。",
+      "id": "prompt-008",
+      "category": "复盘拆解",
+      "purpose": "评论区反推选题",
+      "audience": "内容运营 / 选题编辑",
+      "summary": "从评论反馈里反推出下一轮更值得做的内容方向。",
+      "template": "请根据这批评论摘要【{{commentSummary}}】，为【{{targetUser}}】反推出 8 个值得继续做的选题方向。当前账号定位是【{{accountPositioning}}】，已有业务关联是【{{businessLink}}】，重点平台为【{{platforms}}】。请优先提炼老板真实关心的问题、可追问的争议点和能延展成系列的方向，不要给泛流量标题。",
       "outputFields": [
-        "标题",
-        "目标用户",
-        "用户痛点",
-        "内容角度",
-        "产品关联",
-        "脚本方向"
+        "可追问问题",
+        "推荐选题",
+        "系列方向",
+        "风险提醒"
+      ],
+      "fields": [
+        {
+          "key": "commentSummary",
+          "label": "评论摘要",
+          "inputType": "textarea",
+          "required": true,
+          "placeholder": "例如：老板都在问毛利、出品效率、加盟门店怎么配菜",
+          "source": "manual"
+        },
+        {
+          "key": "targetUser",
+          "label": "目标用户",
+          "inputType": "text",
+          "required": true,
+          "placeholder": "例如：连锁品牌采购团队",
+          "source": "topic"
+        },
+        {
+          "key": "businessLink",
+          "label": "业务关联",
+          "inputType": "textarea",
+          "required": true,
+          "placeholder": "例如：核心食材、供应链标准化、门店经营",
+          "source": "topic"
+        },
+        {
+          "key": "accountPositioning",
+          "label": "账号定位",
+          "inputType": "textarea",
+          "required": true,
+          "placeholder": "例如：餐饮食材供应链服务型账号",
+          "source": "industry"
+        },
+        {
+          "key": "platforms",
+          "label": "重点平台",
+          "inputType": "text",
+          "required": true,
+          "placeholder": "例如：抖音、视频号、小红书",
+          "source": "industry"
+        }
+      ]
+    },
+    {
+      "id": "prompt-009",
+      "category": "复盘拆解",
+      "purpose": "复盘后下一条内容建议",
+      "audience": "账号运营 / 内容负责人",
+      "summary": "根据一条内容的复盘结论，直接生成下一条更值得拍的方向。",
+      "template": "请基于这条内容的复盘结果生成下一条建议内容。原始选题是【{{title}}】，当前表现数据是【{{performanceData}}】，复盘结论是【{{review}}】。目标用户为【{{targetUser}}】，业务关联是【{{businessLink}}】，优先发布平台为【{{platform}}】。请输出一个更适合下一轮发布的选题，并说明为什么这样改、脚本该怎么变、还需要补哪些素材。",
+      "outputFields": [
+        "下一条选题",
+        "为什么这样调整",
+        "脚本变化建议",
+        "要补的素材"
+      ],
+      "fields": [
+        {
+          "key": "title",
+          "label": "原始选题",
+          "inputType": "text",
+          "required": true,
+          "placeholder": "例如：菜单越厚利润越低",
+          "source": "topic"
+        },
+        {
+          "key": "performanceData",
+          "label": "表现数据",
+          "inputType": "textarea",
+          "required": true,
+          "placeholder": "例如：播放 8500，评论 14，转化 1",
+          "source": "topic"
+        },
+        {
+          "key": "review",
+          "label": "复盘结论",
+          "inputType": "textarea",
+          "required": true,
+          "placeholder": "例如：选题有价值，但开头太平，产品关联不够具体",
+          "source": "topic"
+        },
+        {
+          "key": "targetUser",
+          "label": "目标用户",
+          "inputType": "text",
+          "required": true,
+          "placeholder": "例如：火锅店老板",
+          "source": "topic"
+        },
+        {
+          "key": "businessLink",
+          "label": "业务关联",
+          "inputType": "textarea",
+          "required": true,
+          "placeholder": "例如：高复购菜品、套餐搭配、后厨效率",
+          "source": "topic"
+        },
+        {
+          "key": "platform",
+          "label": "发布平台",
+          "inputType": "text",
+          "required": true,
+          "placeholder": "例如：抖音",
+          "source": "topic"
+        }
       ]
     }
   ],

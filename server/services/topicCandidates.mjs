@@ -112,6 +112,37 @@ export function confirmTopic(candidate) {
   return topic;
 }
 
+export function deleteTopic(body) {
+  const content = readContent();
+  const topicId = String(body?.topicId ?? "").trim();
+
+  if (!topicId) {
+    const error = new Error("缺少选题 ID，无法删除。");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const topics = Array.isArray(content.topics) ? content.topics : [];
+  const topic = topics.find((item) => item.id === topicId);
+
+  if (!topic) {
+    const error = new Error("未找到要删除的选题。");
+    error.statusCode = 404;
+    throw error;
+  }
+
+  content.topics = topics.filter((item) => item.id !== topicId);
+  content.productions = Array.isArray(content.productions)
+    ? content.productions.filter((item) => item.topicId !== topicId)
+    : [];
+  writeContent(content);
+
+  return {
+    topicId,
+    deletedTopicTitle: topic.title,
+  };
+}
+
 function buildRefreshRequest(filters, content) {
   const column = String(filters.column ?? "").trim();
   const sourceFilter = String(filters.sourceFilter ?? "").trim();

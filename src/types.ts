@@ -66,6 +66,7 @@ export type IndustryProfile = {
     workflowSteps: IndustryWorkflowStep[];
     assetCards: IndustryAssetCard[];
     weeklyPlan: IndustryPlanEntry[];
+    lastRefreshedAt?: string;
   };
   searchKeywords: {
     dashboardDecision: string;
@@ -135,12 +136,28 @@ export type ScriptTemplate = {
   industry?: IndustryId;
 };
 
+export type PromptFieldInputType = "text" | "textarea" | "number";
+
+export type PromptFieldSource = "manual" | "topic" | "industry";
+
+export type PromptFieldDefinition = {
+  key: string;
+  label: string;
+  inputType: PromptFieldInputType;
+  required: boolean;
+  placeholder: string;
+  source: PromptFieldSource;
+};
+
 export type PromptTemplate = {
   id: string;
+  category: "选题扩展" | "脚本生成" | "复盘拆解";
   purpose: string;
   audience: string;
-  body: string;
+  summary: string;
+  template: string;
   outputFields: string[];
+  fields: PromptFieldDefinition[];
   industry?: IndustryId;
 };
 

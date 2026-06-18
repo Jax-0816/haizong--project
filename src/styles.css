@@ -650,6 +650,56 @@ dd {
   margin-top: 6px;
 }
 
+.dashboard-refresh-note {
+  margin: 2px 0 0;
+  color: var(--text-tertiary);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.dashboard-source-panel {
+  gap: 18px;
+}
+
+.dashboard-source-list {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.dashboard-source-list a {
+  position: relative;
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.72);
+  padding: 14px 36px 14px 14px;
+  text-decoration: none;
+}
+
+.dashboard-source-list a strong {
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.dashboard-source-list a span,
+.dashboard-source-list a p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.dashboard-source-list a svg {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  color: var(--text-tertiary);
+}
+
 .command-button,
 .icon-button,
 .asset-link,
@@ -1180,6 +1230,22 @@ textarea {
   text-align: left;
 }
 
+.topic-row-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+}
+
+.topic-row-actions .topic-production-button {
+  width: 100%;
+}
+
+.topic-delete-button {
+  min-width: 92px;
+  box-shadow: none;
+}
+
 .topic-row.active .topic-title {
   color: var(--blue);
 }
@@ -1673,6 +1739,150 @@ textarea {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.prompts-workbench {
+  display: grid;
+  grid-template-columns: minmax(320px, 0.92fr) minmax(0, 1.18fr);
+  gap: 20px;
+  width: 100%;
+  padding-bottom: 40px;
+}
+
+.prompt-catalog,
+.prompts-builder,
+.prompt-builder-panel,
+.prompt-history-panel,
+.prompt-form-column,
+.prompt-preview-column,
+.prompt-field-grid,
+.prompt-template-list,
+.prompt-history-list {
+  display: grid;
+  gap: 14px;
+}
+
+.prompts-builder {
+  align-content: start;
+}
+
+.prompt-category-row,
+.prompt-template-meta,
+.prompt-history-meta,
+.prompt-builder-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.chip-button,
+.prompt-template-option,
+.prompt-history-item {
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.chip-button {
+  min-height: 34px;
+  border-radius: 9999px;
+  padding: 0 14px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.chip-button.active,
+.prompt-template-option.active,
+.prompt-history-item:hover {
+  background: var(--surface-selected);
+  border-color: rgba(0, 102, 204, 0.16);
+}
+
+.subtle-chip {
+  background: rgba(29, 29, 31, 0.06);
+  color: var(--text-secondary);
+}
+
+.prompt-search-field {
+  min-width: 0;
+}
+
+.prompt-template-option,
+.prompt-history-item {
+  display: grid;
+  gap: 12px;
+  width: 100%;
+  border-radius: 18px;
+  padding: 16px;
+  text-align: left;
+}
+
+.prompt-template-option h3,
+.prompt-history-item strong,
+.prompt-preview-empty h3 {
+  margin: 0;
+  color: var(--text);
+  font-size: 16px;
+  line-height: 1.4;
+}
+
+.prompt-template-option p,
+.prompt-history-item p,
+.prompt-preview-empty p,
+.form-error {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.prompt-builder-grid {
+  display: grid;
+  grid-template-columns: minmax(280px, 0.88fr) minmax(0, 1.12fr);
+  gap: 18px;
+}
+
+.prompt-field {
+  display: grid;
+  gap: 8px;
+}
+
+.prompt-field > span strong {
+  color: var(--amber-text);
+}
+
+.prompt-preview-column {
+  align-content: start;
+  border-radius: 18px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.74);
+  padding: 18px;
+}
+
+.prompt-preview-head {
+  display: grid;
+  gap: 12px;
+}
+
+.prompt-preview-text {
+  margin: 0;
+  white-space: pre-wrap;
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.7;
+  font-family: var(--font-ui);
+}
+
+.prompt-preview-empty {
+  display: grid;
+  gap: 8px;
+  min-height: 180px;
+  align-content: center;
+}
+
+.form-error {
+  color: #b42318;
+}
+
 .template-card,
 .prompt-card,
 .material-card {
@@ -2066,6 +2276,12 @@ td {
     grid-template-columns: 1fr;
   }
 
+  .prompts-workbench,
+  .prompt-builder-grid,
+  .dashboard-source-list {
+    grid-template-columns: 1fr;
+  }
+
   .filter-row {
     grid-template-columns: 1fr;
   }
@@ -2080,6 +2296,14 @@ td {
   }
 
   .filter-refresh-button {
+    width: 100%;
+  }
+
+  .topic-row-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .topic-delete-button {
     width: 100%;
   }
 

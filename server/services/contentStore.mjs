@@ -35,6 +35,9 @@ const topicCategories = [
 const scriptStatuses = ["未写", "已写", "已拍", "已发"];
 const priorities = ["高", "中", "低"];
 const productionSteps = ["topic", "research", "template", "script", "materials", "publish", "review"];
+const promptCategories = ["选题扩展", "脚本生成", "复盘拆解"];
+const promptFieldInputTypes = ["text", "textarea", "number"];
+const promptFieldSources = ["manual", "topic", "industry"];
 
 export function readContent() {
   if (!existsSync(contentPath)) {
@@ -144,10 +147,11 @@ function validateIndustryProfile(profile, index) {
   assertObject(profile.dashboard, `${path}.dashboard`);
   assertKnownKeys(
     profile.dashboard,
-    ["kicker", "subtitle", "heroTitle", "heroDescription", "heroTopic", "stats", "workflowSteps", "assetCards", "weeklyPlan"],
+    ["kicker", "subtitle", "heroTitle", "heroDescription", "heroTopic", "stats", "workflowSteps", "assetCards", "weeklyPlan", "lastRefreshedAt"],
     `${path}.dashboard`,
   );
   ["kicker", "subtitle", "heroTitle", "heroDescription"].forEach((key) => assertString(profile.dashboard[key], `${path}.dashboard.${key}`));
+  if ("lastRefreshedAt" in profile.dashboard) assertString(profile.dashboard.lastRefreshedAt, `${path}.dashboard.lastRefreshedAt`);
   validateIndustryHeroTopic(profile.dashboard.heroTopic, `${path}.dashboard.heroTopic`);
   assertArray(profile.dashboard.stats, `${path}.dashboard.stats`).forEach((item, statIndex) => validateIndustryStat(item, `${path}.dashboard.stats[${statIndex}]`));
   assertArray(profile.dashboard.workflowSteps, `${path}.dashboard.workflowSteps`).forEach((item, stepIndex) =>
@@ -267,10 +271,21 @@ function validateScriptTemplate(template, index) {
 function validatePrompt(prompt, index) {
   const path = `content.prompts[${index}]`;
   assertObject(prompt, path);
-  assertKnownKeys(prompt, ["id", "purpose", "audience", "body", "outputFields", "industry"], path);
-  ["id", "purpose", "audience", "body"].forEach((key) => assertString(prompt[key], `${path}.${key}`));
+  assertKnownKeys(prompt, ["id", "category", "purpose", "audience", "summary", "template", "outputFields", "fields", "industry"], path);
+  ["id", "purpose", "audience", "summary", "template"].forEach((key) => assertString(prompt[key], `${path}.${key}`));
+  assertEnum(prompt.category, promptCategories, `${path}.category`);
   if ("industry" in prompt) assertEnum(prompt.industry, industryIds, `${path}.industry`);
   assertStringArray(prompt.outputFields, `${path}.outputFields`, { nonEmpty: true });
+  assertArray(prompt.fields, `${path}.fields`).forEach((field, fieldIndex) => validatePromptField(field, `${path}.fields[${fieldIndex}]`));
+}
+
+function validatePromptField(field, path) {
+  assertObject(field, path);
+  assertKnownKeys(field, ["key", "label", "inputType", "required", "placeholder", "source"], path);
+  ["key", "label", "placeholder"].forEach((key) => assertString(field[key], `${path}.${key}`));
+  assertEnum(field.inputType, promptFieldInputTypes, `${path}.inputType`);
+  assertBoolean(field.required, `${path}.required`);
+  assertEnum(field.source, promptFieldSources, `${path}.source`);
 }
 
 function validateMaterialSection(section, index) {

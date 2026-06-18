@@ -19,6 +19,7 @@ import {
   X,
 } from "lucide-react";
 import { useEffect, useMemo, useState, type ChangeEvent, type FormEvent } from "react";
+import PromptsView from "./components/PromptsView";
 import data from "./data/content.json";
 import { activeIndustryStorageKey, adaptIndustryText, defaultIndustryId, getIndustryProfile, normalizeIndustryId } from "./industry";
 import type {
@@ -35,6 +36,7 @@ import type {
   ResearchFreshness,
   ResearchRequest,
   ResearchResult,
+  ResearchSource,
   ScriptStatus,
   Topic,
   TopicCandidateGenerateRequest,
@@ -348,7 +350,6 @@ function App() {
       return defaultProductionTopicIdsByIndustry;
     }
   });
-  const [copiedPromptId, setCopiedPromptId] = useState("");
   const [topics, setTopics] = useState<Topic[]>(() => data.topics as Topic[]);
   const [scriptTemplates, setScriptTemplates] = useState<ScriptTemplate[]>(() => data.scriptTemplates as ScriptTemplate[]);
   const [materials, setMaterials] = useState<Array<MaterialSection & { industry?: IndustryId }>>(
@@ -417,13 +418,6 @@ function App() {
     () => navItems.filter((item) => !item.adminOnly || session?.role === "admin"),
     [session?.role],
   );
-
-  const copyPrompt = async (prompt: PromptTemplate, profile: IndustryProfile) => {
-    const text = `${adaptIndustryText(prompt.body, profile)}\n\n输出字段：${prompt.outputFields.join("、")}`;
-    await navigator.clipboard.writeText(text);
-    setCopiedPromptId(prompt.id);
-    window.setTimeout(() => setCopiedPromptId(""), 1600);
-  };
 
   useEffect(() => {
     const syncSession = () => {
@@ -520,6 +514,23 @@ function App() {
     });
   };
 
+  const handleTopicDeleted = (topicId: string) => {
+    setTopics((current) => current.filter((topic) => topic.id !== topicId));
+    setProductions((current) => current.filter((production) => production.topicId !== topicId));
+    setProductionTopicIdsByIndustry((current) => ({
+      hotpot: (current.hotpot ?? []).filter((item) => item !== topicId),
+      bbq: (current.bbq ?? []).filter((item) => item !== topicId),
+    }));
+
+    if (selectedTopicId === topicId) {
+      setSelectedTopicId("");
+    }
+
+    if (productionTopicId === topicId) {
+      setProductionTopicId("");
+    }
+  };
+
   return (
     <div className="app-shell">
       <aside className="sidebar" aria-label="主导航">
@@ -593,6 +604,10 @@ function App() {
             activeIndustry={activeIndustry}
             industryProfile={resolvedIndustryProfile}
             metrics={metrics}
+            onTopicConfirmed={(topic) => {
+              setTopics((current) => [topic, ...current]);
+              setSelectedTopicId(topic.id);
+            }}
             topics={visibleTopics}
             setActiveView={setActiveView}
           />
@@ -612,6 +627,7 @@ function App() {
               ensureProductionTopicVisible(topicId);
               setActiveView("production");
             }}
+            onTopicDeleted={handleTopicDeleted}
             query={query}
             selectedTopic={selectedTopic}
             setColumn={setColumn}
@@ -673,7 +689,12 @@ function App() {
           />
         ) : null}
         {activeView === "prompts" ? (
-          <PromptsView activeIndustry={activeIndustry} copiedPromptId={copiedPromptId} copyPrompt={copyPrompt} industryProfile={resolvedIndustryProfile} />
+          <PromptsView
+            activeIndustry={activeIndustry}
+            industryProfile={resolvedIndustryProfile}
+            prompts={data.prompts as PromptTemplate[]}
+            topics={visibleTopics}
+          />
         ) : null}
         {activeView === "materials" ? (
           <MaterialsView
@@ -825,6 +846,7 @@ function Dashboard({
   activeIndustry,
   industryProfile,
   metrics,
+  onTopicConfirmed,
   topics,
   setActiveView,
 }: {
@@ -837,6 +859,7 @@ function Dashboard({
     statusCounts: Array<{ label: string; count: number }>;
     columnCounts: Array<{ label: string; count: number }>;
   };
+  onTopicConfirmed: (topic: Topic) => void;
   topics: Topic[];
   setActiveView: (view: ViewId) => void;
 }) {
@@ -847,6 +870,12 @@ function Dashboard({
   const [dashboardAi, setDashboardAi] = useState<DashboardAiState | null>(null);
   const [dashboardAiError, setDashboardAiError] = useState("");
   const [dashboardAiLoading, setDashboardAiLoading] = useState("");
+  const [dashboardRefreshLoading, setDashboardRefreshLoading] = useState(false);
+  const [dashboardRefreshMessage, setDashboardRefreshMessage] = useState("");
+  const [dashboardRefreshSources, setDashboardRefreshSources] = useState<ResearchSource[]>([]);
+  const [confirmHeroLoading, setConfirmHeroLoading] = useState(false);
+  const [heroTopic, setHeroTopic] = useState(industryProfile.dashboard.heroTopic);
+  const [lastRefreshedAt, setLastRefreshedAt] = useState(industryProfile.dashboard.lastRefreshedAt ?? "");
   const [weeklyPlanLoading, setWeeklyPlanLoading] = useState(false);
   const [weeklyPlan, setWeeklyPlan] = useState(industryProfile.dashboard.weeklyPlan);
   const dashboardStorageKey = storageKeyForIndustry(dashboardAiKey, activeIndustry);
@@ -864,7 +893,11 @@ function Dashboard({
 
   useEffect(() => {
     setDashboardFocus(industryProfile.dashboard.heroTitle);
+    setHeroTopic(industryProfile.dashboard.heroTopic);
     setWeeklyPlan(industryProfile.dashboard.weeklyPlan);
+    setLastRefreshedAt(industryProfile.dashboard.lastRefreshedAt ?? "");
+    setDashboardRefreshMessage("");
+    setDashboardRefreshSources([]);
   }, [industryProfile]);
 
   const runDashboardAi = async (label: string, request: ResearchRequest) => {
@@ -926,16 +959,99 @@ function Dashboard({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ industry: activeIndustry }),
       });
-      const payload = await response.json();
+      const payload = await parseResearchResponse(response);
       if (!response.ok) throw new Error(payload.error ?? "周计划生成失败");
       // 用返回的最新数据更新本地状态
       if (Array.isArray(payload.weeklyPlan)) {
         setWeeklyPlan(payload.weeklyPlan);
       }
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "周计划生成失败");
+      setDashboardAiError(caught instanceof Error ? caught.message : "周计划生成失败");
     } finally {
       setWeeklyPlanLoading(false);
+    }
+  };
+
+  const handleDailyRefresh = async () => {
+    setDashboardRefreshLoading(true);
+    setDashboardAiError("");
+    setDashboardRefreshMessage("");
+
+    try {
+      const response = await fetch("/api/dashboard/daily-refresh", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ industry: activeIndustry }),
+      });
+      const payload = await parseResearchResponse(response);
+
+      if (!response.ok) {
+        throw new Error(payload.error ?? "首页今日刷新失败");
+      }
+
+      if (payload.heroTopic) {
+        setHeroTopic(payload.heroTopic);
+      }
+      if (Array.isArray(payload.weeklyPlan)) {
+        setWeeklyPlan(payload.weeklyPlan);
+      }
+      if (payload.refreshedAt) {
+        setLastRefreshedAt(payload.refreshedAt);
+      }
+      setDashboardRefreshSources(Array.isArray(payload.sources) ? payload.sources : []);
+      setDashboardRefreshMessage(payload.warning ? `已刷新，提示：${payload.warning}` : "首页今日推荐和本周计划已刷新。");
+    } catch (caught) {
+      setDashboardAiError(caught instanceof Error ? caught.message : "首页今日刷新失败");
+    } finally {
+      setDashboardRefreshLoading(false);
+    }
+  };
+
+  const confirmHeroTopic = async () => {
+    const confirmed = window.confirm(`确认将《${heroTopic.title}》写入选题池吗？写入后可以在选题池继续编辑和进入生产。`);
+    if (!confirmed) {
+      return;
+    }
+
+    setConfirmHeroLoading(true);
+    setDashboardAiError("");
+    setDashboardRefreshMessage("");
+
+    try {
+      const response = await fetch("/api/topics/confirm", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          industry: activeIndustry,
+          title: heroTopic.title,
+          topicCategory: "行业热点选题",
+          column: industryProfile.columns[0] ?? "食材供应链知识",
+          targetUser: heroTopic.targetUser || industryProfile.audience,
+          painPoint: heroTopic.contentType || "今日首页 AI 研判推荐方向",
+          angle: heroTopic.contentType || "今日内容机会",
+          coreView: heroTopic.title,
+          businessLink: heroTopic.productAssociation || industryProfile.conversionGoal,
+          hotSource: "首页每日刷新",
+          platform: heroTopic.platform || industryProfile.platforms.join("/"),
+          format: "口播/图文",
+          sourceUrls: dashboardRefreshSources.map((source) => source.url).filter(Boolean).slice(0, 4),
+          recommendationScore: 78,
+          risks: ["首页推荐为 AI 联网研判结果，入池后仍需人工补充资料和审核表达。"],
+        }),
+      });
+      const payload = await parseResearchResponse(response);
+
+      if (!response.ok) {
+        throw new Error(payload.error ?? "确认入选题池失败");
+      }
+
+      const topic = payload as Topic;
+      onTopicConfirmed(topic);
+      setDashboardRefreshMessage(`已确认入池：${topic.title}`);
+    } catch (caught) {
+      setDashboardAiError(caught instanceof Error ? caught.message : "确认入选题池失败");
+    } finally {
+      setConfirmHeroLoading(false);
     }
   };
 
@@ -996,11 +1112,13 @@ function Dashboard({
   ].filter(Boolean) as PerformanceInsight[];
 
   const reviewCards = [
-    { title: "高互动内容", metric: topViews ? formatNumber(topViews.publishData.views) : "0", detail: topViews?.title ?? industryProfile.dashboard.heroTopic.title },
+    { title: "高互动内容", metric: topViews ? formatNumber(topViews.publishData.views) : "0", detail: topViews?.title ?? heroTopic.title },
     { title: "可二次改编内容", metric: "系列化", detail: seriesCandidate?.title ?? "菜单结构类内容适合拆成系列" },
     { title: "低表现内容", metric: "待优化", detail: "产品卖点不清时，先补门店场景和采购理由" },
-    { title: "下周推荐方向", metric: "成本控制", detail: industryProfile.dashboard.weeklyPlan[0]?.output ?? "围绕高复购食材、低损耗组合、节气备货继续推进" },
+    { title: "下周推荐方向", metric: "成本控制", detail: weeklyPlan[0]?.output ?? "围绕高复购食材、低损耗组合、节气备货继续推进" },
   ];
+  const refreshDateLabel = lastRefreshedAt ? `最近刷新：${formatDateTime(lastRefreshedAt)}` : "今日推荐尚未刷新";
+  const isRefreshedToday = lastRefreshedAt ? new Date(lastRefreshedAt).toDateString() === new Date().toDateString() : false;
 
   const applyQuickTopic = (topic: string) => {
     setDashboardFocus(topic);
@@ -1041,6 +1159,10 @@ function Dashboard({
               {dashboardAiLoading ? <Loader2 className="spin-icon" size={18} aria-hidden="true" /> : <Sparkles size={18} aria-hidden="true" />}
               <span>{dashboardAiLoading ? "生成中" : "生成今日选题"}</span>
             </button>
+            <button className="command-button secondary" disabled={dashboardRefreshLoading} onClick={handleDailyRefresh} type="button">
+              {dashboardRefreshLoading ? <Loader2 className="spin-icon" size={18} aria-hidden="true" /> : <Globe2 size={18} aria-hidden="true" />}
+              <span>{dashboardRefreshLoading ? "刷新中" : "今日刷新"}</span>
+            </button>
             <button className="command-button secondary" onClick={() => setActiveView("topics")} type="button">
               查看选题池
             </button>
@@ -1048,23 +1170,53 @@ function Dashboard({
               创建脚本
             </button>
           </div>
+          <p className="dashboard-refresh-note">
+            {refreshDateLabel}
+            {isRefreshedToday ? " · 今天已刷新，可手动重新刷新" : ""}
+          </p>
+          {dashboardRefreshMessage ? <div className="topic-confirm-message">{dashboardRefreshMessage}</div> : null}
         </div>
 
         <article className="today-topic-card">
           <span className="command-tag red">今日推荐选题</span>
-          <h3>{industryProfile.dashboard.heroTopic.title}</h3>
+          <h3>{heroTopic.title}</h3>
           <dl>
-            <div><dt>目标用户</dt><dd>{industryProfile.dashboard.heroTopic.targetUser}</dd></div>
-            <div><dt>内容类型</dt><dd>{industryProfile.dashboard.heroTopic.contentType}</dd></div>
-            <div><dt>产品关联</dt><dd>{industryProfile.dashboard.heroTopic.productAssociation}</dd></div>
-            <div><dt>推荐平台</dt><dd>{industryProfile.dashboard.heroTopic.platform}</dd></div>
+            <div><dt>目标用户</dt><dd>{heroTopic.targetUser}</dd></div>
+            <div><dt>内容类型</dt><dd>{heroTopic.contentType}</dd></div>
+            <div><dt>产品关联</dt><dd>{heroTopic.productAssociation}</dd></div>
+            <div><dt>推荐平台</dt><dd>{heroTopic.platform}</dd></div>
           </dl>
           <div className="command-actions compact">
             <button className="command-button primary" onClick={() => setActiveView("production")} type="button">生成脚本</button>
             <button className="command-button secondary" onClick={() => setActiveView("topics")} type="button">加入本周计划</button>
+            <button className="command-button secondary" disabled={confirmHeroLoading} onClick={confirmHeroTopic} type="button">
+              {confirmHeroLoading ? "确认中" : "确认入选题池"}
+            </button>
           </div>
         </article>
       </section>
+
+      {dashboardRefreshSources.length > 0 ? (
+        <section className="command-panel dashboard-source-panel">
+          <div className="command-section-head">
+            <div>
+              <span className="command-kicker">Daily Sources</span>
+              <h2>今日刷新来源</h2>
+              <p>最近一次首页刷新参考的联网搜索结果，确认入池前可先核对依据。</p>
+            </div>
+          </div>
+          <div className="dashboard-source-list">
+            {dashboardRefreshSources.slice(0, 6).map((source) => (
+              <a href={source.url} key={source.url} rel="noreferrer" target="_blank">
+                <strong>{source.title || source.siteName || "来源链接"}</strong>
+                <span>{source.siteName || source.datePublished || "联网来源"}</span>
+                <p>{source.summary || source.snippet}</p>
+                <ExternalLink size={14} aria-hidden="true" />
+              </a>
+            ))}
+          </div>
+        </section>
+      ) : null}
 
       <section className="command-stat-grid">
         {industryProfile.dashboard.stats.map((stat) => (
@@ -1374,6 +1526,7 @@ function TopicsView({
   filteredTopics,
   onStartProduction,
   onTopicConfirmed,
+  onTopicDeleted,
   query,
   selectedTopic,
   setColumn,
@@ -1390,6 +1543,7 @@ function TopicsView({
   filteredTopics: Topic[];
   onStartProduction: (topicId: string) => void;
   onTopicConfirmed: (topic: Topic) => void;
+  onTopicDeleted: (topicId: string) => void;
   query: string;
   selectedTopic: Topic | undefined;
   setColumn: (value: string) => void;
@@ -1411,6 +1565,9 @@ function TopicsView({
   const [refreshLoading, setRefreshLoading] = useState(false);
   const [refreshError, setRefreshError] = useState("");
   const [refreshMessage, setRefreshMessage] = useState("");
+  const [deleteLoadingTopicId, setDeleteLoadingTopicId] = useState("");
+  const [deleteError, setDeleteError] = useState("");
+  const [deleteMessage, setDeleteMessage] = useState("");
   const detailTopic = selectedTopic ?? filteredTopics[0] ?? filteredTopics[0];
 
   useEffect(() => {
@@ -1574,6 +1731,41 @@ function TopicsView({
     }
   };
 
+  const deleteTopicFromPool = async (topic: Topic) => {
+    const confirmed = window.confirm(`确定删除《${topic.title}》吗？删除后会同时清理这个选题的生产进度，但不会删除发布复盘记录。`);
+    if (!confirmed) {
+      return;
+    }
+
+    setDeleteLoadingTopicId(topic.id);
+    setDeleteError("");
+    setDeleteMessage("");
+
+    try {
+      const response = await fetch("/api/topics/delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ topicId: topic.id }),
+      });
+      const payload = await parseResearchResponse(response);
+
+      if (!response.ok) {
+        throw new Error(payload.error ?? "删除选题失败");
+      }
+
+      const nextTopic = filteredTopics.find((item) => item.id !== topic.id);
+      onTopicDeleted(topic.id);
+      if (detailTopic?.id === topic.id) {
+        setSelectedTopicId(nextTopic?.id ?? "");
+      }
+      setDeleteMessage(`已删除选题：${topic.title}`);
+    } catch (caught) {
+      setDeleteError(caught instanceof Error ? caught.message : "删除选题失败");
+    } finally {
+      setDeleteLoadingTopicId("");
+    }
+  };
+
   return (
     <section className="topics-workspace">
       <div className="topics-layout">
@@ -1640,6 +1832,8 @@ function TopicsView({
           </div>
           {refreshError ? <div className="research-error">{refreshError}</div> : null}
           {refreshMessage ? <div className="topic-confirm-message">{refreshMessage}</div> : null}
+          {deleteError ? <div className="research-error">{deleteError}</div> : null}
+          {deleteMessage ? <div className="topic-confirm-message">{deleteMessage}</div> : null}
 
           <TopicCandidatePanel
             emptyText={`当前 ${industryProfile.label} 筛选条件下没有生成新的候选选题，可以换个关键词或栏目再试。`}
@@ -1665,9 +1859,21 @@ function TopicsView({
                     {topic.platform} · {topic.format}
                   </span>
                 </button>
-                <button className="inline-ai-button" onClick={() => onStartProduction(topic.id)} type="button">
-                  进入生产
-                </button>
+                <div className="topic-row-actions">
+                  <button className="inline-ai-button topic-production-button" onClick={() => onStartProduction(topic.id)} type="button">
+                    进入生产
+                  </button>
+                  <button
+                    className="icon-button danger topic-delete-button"
+                    disabled={deleteLoadingTopicId === topic.id}
+                    onClick={() => deleteTopicFromPool(topic)}
+                    title="删除选题"
+                    type="button"
+                  >
+                    {deleteLoadingTopicId === topic.id ? <Loader2 className="spin-icon" size={16} aria-hidden="true" /> : <Trash2 size={16} aria-hidden="true" />}
+                    <span>{deleteLoadingTopicId === topic.id ? "删除中" : "删除"}</span>
+                  </button>
+                </div>
               </article>
             ))}
           </div>
@@ -2516,7 +2722,7 @@ function ResearchView({
     }
   };
 
-  const removeHistoryItem = (id) => {
+  const removeHistoryItem = (id: string) => {
     const next = history.filter((item) => item.id !== id);
     setHistory(next);
     window.localStorage.setItem(historyStorageKey, JSON.stringify(next));
@@ -2901,47 +3107,6 @@ function ScriptsView({
           );
         })}
       </section>
-    </section>
-  );
-}
-
-function PromptsView({
-  activeIndustry,
-  copiedPromptId,
-  copyPrompt,
-  industryProfile,
-}: {
-  activeIndustry: IndustryId;
-  copiedPromptId: string;
-  copyPrompt: (prompt: PromptTemplate, profile: IndustryProfile) => void;
-  industryProfile: IndustryProfile;
-}) {
-  return (
-    <section className="prompt-list">
-      {(data.prompts as Array<PromptTemplate & { industry?: IndustryId }>)
-        .filter((prompt) => !prompt.industry || prompt.industry === activeIndustry)
-        .map((prompt) => (
-        <article className="panel prompt-card" key={prompt.id}>
-          <div className="section-heading">
-            <div>
-              <h2>{prompt.purpose}</h2>
-              <span>适用对象：{prompt.audience}</span>
-            </div>
-            <button className="icon-button" onClick={() => copyPrompt(prompt, industryProfile)} title="复制提示词" type="button">
-              <Clipboard size={18} aria-hidden="true" />
-              <span>{copiedPromptId === prompt.id ? "已复制" : "复制"}</span>
-            </button>
-          </div>
-          <p>{adaptIndustryText(prompt.body, industryProfile)}</p>
-          <div className="chip-row">
-            {prompt.outputFields.map((field) => (
-              <span className="chip" key={field}>
-                {field}
-              </span>
-            ))}
-          </div>
-        </article>
-      ))}
     </section>
   );
 }

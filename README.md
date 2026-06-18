@@ -133,9 +133,11 @@ AUTH_CODE_TTL_MS=300000
 
 ```text
 POST /api/research                       联网调研（🎵 抖音 + Tavily 双源）
+POST /api/dashboard/daily-refresh        首页今日推荐与周计划每日刷新
 POST /api/topic-candidates/generate      选题候选生成（三源管线：抖音 + Tavily + DeepSeek）
 POST /api/topics/refresh                 选题池刷新（生成一周发布计划）
 POST /api/topics/confirm                 候选确认入池
+POST /api/topics/delete                  删除选题并清理对应生产进度
 POST /api/douyin/search                  抖音视频搜索（独立接口）
 POST /api/production/save                生产台保存
 POST /api/production/research            生产台调研
