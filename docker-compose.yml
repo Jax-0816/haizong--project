@@ -1,0 +1,9 @@
+services:
+  app:
+    build: .
+    container_name: haizong-project-app
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:4280:4280"
+    env_file:
+      - .env
