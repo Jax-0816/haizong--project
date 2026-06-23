@@ -1,76 +1,44 @@
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
-import { createHmac, randomUUID } from "node:crypto";
+import { createHmac, randomBytes, randomUUID, scryptSync, timingSafeEqual } from "node:crypto";
 import { dirname, resolve } from "node:path";
 import { getEnv } from "../config.mjs";
 
 const authUsersPath = resolve(process.cwd(), getEnv("AUTH_USERS_PATH", "server/data/auth-users.json"));
-const codeTtlMs = Number(getEnv("AUTH_CODE_TTL_MS", String(5 * 60 * 1000)));
 const sessionTtlMs = Number(getEnv("AUTH_SESSION_TTL_MS", String(8 * 60 * 60 * 1000)));
-const verificationCodes = new Map();
 
-export function sendVerificationCode(body) {
-  const phone = normalizePhone(body?.phone);
-  const code = String(Math.floor(100000 + Math.random() * 900000));
-  const expiresAt = new Date(Date.now() + codeTtlMs).toISOString();
+export function loginWithPassword(body) {
+  const identifier = normalizeIdentifier(body?.identifier ?? body?.phone);
+  const password = String(body?.password ?? "");
 
-  verificationCodes.set(phone, {
-    code,
-    expiresAt,
-  });
-
-  return {
-    ok: true,
-    phone,
-    expiresAt,
-    devCode: code,
-    message: "本地模拟验证码已生成。",
-  };
-}
-
-export function loginWithCode(body) {
-  const phone = normalizePhone(body?.phone);
-  const code = String(body?.code ?? "").trim();
-
-  if (!code) {
-    const error = new Error("请输入验证码。");
+  if (!password) {
+    const error = new Error("请输入密码。");
     error.statusCode = 400;
     throw error;
   }
 
-  assertVerificationCode(phone, code);
-
   const data = readAuthData();
-  const adminPhone = getAdminPhone();
   const now = new Date().toISOString();
-  let user = data.users.find((item) => item.phone === phone);
+  const user = findUserByIdentifier(data.users, identifier);
 
-  if (user?.status === "deleted") {
-    const error = new Error("该账号已被管理员删除，无法登录。");
+  if (!user) {
+    throwInvalidCredentials();
+  }
+  if (user?.status === "deleted" || user?.status === "disabled") {
+    const error = new Error(user.status === "disabled" ? "该账号已被管理员禁用，无法登录。" : "该账号已被管理员删除，无法登录。");
     error.statusCode = 403;
     throw error;
   }
-
-  if (!user) {
-    user = {
-      id: nextUserId(data.users),
-      phone,
-      displayName: phone === adminPhone ? getAdminDisplayName() : maskPhone(phone),
-      role: phone === adminPhone ? "admin" : "member",
-      status: "active",
-      createdAt: now,
-      lastLoginAt: now,
-    };
-    data.users.push(user);
-  } else {
-    user.lastLoginAt = now;
-    if (phone === adminPhone && user.role !== "admin") {
-      user.role = "admin";
-      user.displayName = user.displayName || getAdminDisplayName();
-    }
+  if (!normalizePasswordHash(user.passwordHash)) {
+    const error = new Error(user.phone === getAdminPhone() ? "管理员账号尚未配置 AUTH_ADMIN_PASSWORD。" : "该账号尚未设置密码，请联系管理员重置。");
+    error.statusCode = 403;
+    throw error;
+  }
+  if (!verifyPassword(password, user.passwordHash)) {
+    throwInvalidCredentials();
   }
 
+  user.lastLoginAt = now;
   writeAuthData(data);
-  verificationCodes.delete(phone);
 
   return createSession(user);
 }
@@ -99,8 +67,39 @@ export function listAuthUsers(req) {
   const data = readAuthData();
 
   return {
-    users: data.users.map(publicUser),
+    users: data.users.filter((user) => user.status !== "deleted").map(publicUser),
   };
+}
+
+export function createAuthUser(req, body) {
+  requireAdmin(req);
+  const phone = normalizePhone(body?.phone);
+  const password = normalizePassword(body?.password);
+  const displayName = String(body?.displayName ?? "").trim() || maskPhone(phone);
+  const role = normalizeRole(body?.role);
+  const data = readAuthData();
+
+  if (data.users.some((item) => item.phone === phone)) {
+    const error = new Error("该手机号已存在。");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const now = new Date().toISOString();
+  const user = {
+    id: nextUserId(data.users),
+    phone,
+    displayName,
+    role,
+    status: "active",
+    createdAt: now,
+    lastLoginAt: "",
+    passwordHash: hashPassword(password),
+  };
+  data.users.push(user);
+  writeAuthData(data);
+
+  return { user: publicUser(user) };
 }
 
 export function deleteAuthUser(req, body) {
@@ -135,6 +134,95 @@ export function deleteAuthUser(req, body) {
   }
 
   user.status = "deleted";
+  writeAuthData(data);
+
+  return { user: publicUser(user) };
+}
+
+export function updateAuthUserPassword(req, body) {
+  requireAdmin(req);
+  const userId = String(body?.userId ?? "").trim();
+  const password = normalizePassword(body?.password);
+  const data = readAuthData();
+  const user = data.users.find((item) => item.id === userId);
+
+  if (!user) {
+    const error = new Error("未找到要更新的账号。");
+    error.statusCode = 404;
+    throw error;
+  }
+  if (user.status === "deleted") {
+    const error = new Error("已删除账号不能重置密码。");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  user.passwordHash = hashPassword(password);
+  writeAuthData(data);
+
+  return { user: publicUser(user) };
+}
+
+export function updateAuthUserStatus(req, body) {
+  const admin = requireAdmin(req);
+  const user = findManagedUser(body?.userId);
+  const nextStatus = normalizeStatus(body?.status);
+
+  if (admin.id === user.id && nextStatus !== "active") {
+    const error = new Error("不能禁用或删除当前登录的管理员账号。");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const data = readAuthData();
+  const target = data.users.find((item) => item.id === user.id);
+  if (!target) {
+    const error = new Error("未找到要更新的账号。");
+    error.statusCode = 404;
+    throw error;
+  }
+
+  if (target.role === "admin" && nextStatus !== "active" && activeAdmins(data.users).length <= 1) {
+    const error = new Error("不能禁用或删除最后一个管理员账号。");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  target.status = nextStatus;
+  writeAuthData(data);
+
+  return { user: publicUser(target) };
+}
+
+export function updateAuthUserRole(req, body) {
+  const admin = requireAdmin(req);
+  const nextRole = normalizeRole(body?.role);
+  const data = readAuthData();
+  const userId = String(body?.userId ?? "").trim();
+  const user = data.users.find((item) => item.id === userId);
+
+  if (!user) {
+    const error = new Error("未找到要更新的账号。");
+    error.statusCode = 404;
+    throw error;
+  }
+
+  if (admin.id === user.id && nextRole !== "admin") {
+    const error = new Error("不能取消当前登录账号的管理员权限。");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  if (user.role === "admin" && nextRole !== "admin" && activeAdmins(data.users).length <= 1) {
+    const error = new Error("不能取消最后一个管理员账号的权限。");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  user.role = nextRole;
+  if (user.status === "deleted") {
+    user.status = "disabled";
+  }
   writeAuthData(data);
 
   return { user: publicUser(user) };
@@ -178,36 +266,17 @@ function getUserByToken(token) {
   return user;
 }
 
-function assertVerificationCode(phone, code) {
-  const record = verificationCodes.get(phone);
-
-  if (!record) {
-    const error = new Error("请先获取验证码。");
-    error.statusCode = 400;
-    throw error;
-  }
-
-  if (new Date(record.expiresAt).getTime() <= Date.now()) {
-    verificationCodes.delete(phone);
-    const error = new Error("验证码已过期，请重新获取。");
-    error.statusCode = 400;
-    throw error;
-  }
-
-  if (record.code !== code) {
-    const error = new Error("验证码不正确。");
-    error.statusCode = 400;
-    throw error;
-  }
-}
-
 function readAuthData() {
   ensureAuthFile();
   const data = JSON.parse(readFileSync(authUsersPath, "utf8"));
   if (!data || typeof data !== "object" || !Array.isArray(data.users)) {
     return { users: [] };
   }
-  return ensureSeedAdmin(data);
+  const migrated = migrateAuthData(data);
+  if (migrated.changed) {
+    writeAuthData(migrated.data);
+  }
+  return ensureSeedAdmin(migrated.data);
 }
 
 function writeAuthData(data) {
@@ -229,6 +298,7 @@ function ensureAuthFile() {
 
 function ensureSeedAdmin(data) {
   const adminPhone = getAdminPhone();
+  const adminPassword = getAdminPassword();
   let changed = false;
   let admin = data.users.find((user) => user.phone === adminPhone);
   const now = new Date().toISOString();
@@ -242,6 +312,7 @@ function ensureSeedAdmin(data) {
       status: "active",
       createdAt: now,
       lastLoginAt: "",
+      passwordHash: adminPassword ? hashPassword(adminPassword) : "",
     };
     data.users.push(admin);
     changed = true;
@@ -251,6 +322,10 @@ function ensureSeedAdmin(data) {
       admin.role = "admin";
       admin.status = "active";
       admin.displayName = nextName;
+      changed = true;
+    }
+    if (!admin.passwordHash && adminPassword) {
+      admin.passwordHash = hashPassword(adminPassword);
       changed = true;
     }
   }
@@ -263,15 +338,24 @@ function ensureSeedAdmin(data) {
 }
 
 function normalizeUser(user) {
-  return {
+  const normalized = {
     id: String(user.id ?? ""),
     phone: String(user.phone ?? ""),
     displayName: String(user.displayName ?? ""),
     role: user.role === "admin" ? "admin" : "member",
-    status: user.status === "deleted" ? "deleted" : "active",
+    status: normalizeStatus(user.status, "active"),
     createdAt: String(user.createdAt ?? ""),
     lastLoginAt: String(user.lastLoginAt ?? ""),
   };
+
+  const passwordHash = normalizePasswordHash(user.passwordHash);
+  if (passwordHash) {
+    normalized.passwordHash = passwordHash;
+  } else if (typeof user.password === "string" && user.password) {
+    normalized.passwordHash = hashPassword(user.password);
+  }
+
+  return normalized;
 }
 
 function createSession(user) {
@@ -301,6 +385,7 @@ function publicUser(user) {
     status: user.status,
     createdAt: user.createdAt,
     lastLoginAt: user.lastLoginAt,
+    hasPassword: !!normalizePasswordHash(user.passwordHash),
   };
 }
 
@@ -363,8 +448,19 @@ function getAdminDisplayName() {
   return getEnv("AUTH_ADMIN_DISPLAY_NAME", "海总管理员");
 }
 
+function getAdminPassword() {
+  return String(getEnv("AUTH_ADMIN_PASSWORD", "")).trim();
+}
+
 function getTokenSecret() {
-  return getEnv("AUTH_TOKEN_SECRET", "haizong-local-dev-secret");
+  const secret = getEnv("AUTH_TOKEN_SECRET", "haizong-local-dev-secret");
+  if (process.env.NODE_ENV === "production" && secret === "haizong-local-dev-secret") {
+    const error = new Error("生产环境必须配置 AUTH_TOKEN_SECRET。");
+    error.statusCode = 500;
+    error.code = "MISSING_AUTH_TOKEN_SECRET";
+    throw error;
+  }
+  return secret;
 }
 
 function nextUserId(users) {
@@ -381,4 +477,110 @@ function activeAdmins(users) {
 
 function maskPhone(phone) {
   return `${phone.slice(0, 3)}****${phone.slice(7)}`;
+}
+
+function normalizeIdentifier(value) {
+  const identifier = String(value ?? "").trim();
+  if (!identifier) {
+    const error = new Error("请输入账号或手机号。");
+    error.statusCode = 400;
+    throw error;
+  }
+  return identifier;
+}
+
+function normalizePassword(value) {
+  const password = String(value ?? "");
+  if (password.length < 8) {
+    const error = new Error("密码至少需要 8 位。");
+    error.statusCode = 400;
+    throw error;
+  }
+  return password;
+}
+
+function findUserByIdentifier(users, identifier) {
+  const trimmed = String(identifier ?? "").trim();
+  const compact = trimmed.replace(/\s+/g, "");
+  return users.find((user) => user.phone === compact || user.displayName === trimmed || user.id === trimmed);
+}
+
+function throwInvalidCredentials() {
+  const error = new Error("账号或密码不正确。");
+  error.statusCode = 401;
+  throw error;
+}
+
+function migrateAuthData(data) {
+  const users = data.users.map(normalizeUser);
+  const changed = JSON.stringify(users) !== JSON.stringify(data.users);
+  return {
+    changed,
+    data: { users },
+  };
+}
+
+function hashPassword(password) {
+  const salt = randomBytes(16).toString("base64url");
+  const key = scryptSync(String(password), salt, 64).toString("base64url");
+  return `scrypt$${salt}$${key}`;
+}
+
+function normalizePasswordHash(value) {
+  const passwordHash = String(value ?? "").trim();
+  if (!passwordHash) {
+    return "";
+  }
+
+  if (!passwordHash.startsWith("scrypt$")) {
+    return "";
+  }
+
+  const parts = passwordHash.split("$");
+  if (parts.length !== 3 || !parts[1] || !parts[2]) {
+    return "";
+  }
+
+  return passwordHash;
+}
+
+function verifyPassword(password, passwordHash) {
+  const normalizedHash = normalizePasswordHash(passwordHash);
+  if (!normalizedHash) {
+    return false;
+  }
+
+  const [, salt, storedKey] = normalizedHash.split("$");
+  const candidate = scryptSync(String(password), salt, 64);
+  const stored = Buffer.from(storedKey, "base64url");
+  return candidate.length === stored.length && timingSafeEqual(candidate, stored);
+}
+
+function findManagedUser(userId) {
+  const id = String(userId ?? "").trim();
+  if (!id) {
+    const error = new Error("缺少用户 ID。");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const data = readAuthData();
+  const user = data.users.find((item) => item.id === id);
+  if (!user) {
+    const error = new Error("未找到要更新的账号。");
+    error.statusCode = 404;
+    throw error;
+  }
+  return user;
+}
+
+function normalizeRole(value) {
+  return value === "admin" ? "admin" : "member";
+}
+
+function normalizeStatus(value, fallback = "active") {
+  if (value === "deleted" || value === "disabled" || value === "active") {
+    return value;
+  }
+  return fallback;
 }

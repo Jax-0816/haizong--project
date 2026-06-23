@@ -84,6 +84,7 @@ HOST=0.0.0.0
 PORT=4280
 
 AUTH_ADMIN_PHONE=你的管理员手机号
+AUTH_ADMIN_PASSWORD=管理员登录密码
 AUTH_TOKEN_SECRET=一串足够长的随机字符串
 AUTH_USERS_PATH=/data/haizong/auth-users.json
 
@@ -91,7 +92,7 @@ CONTENT_STORAGE_PATH=/data/haizong/content.json
 CONTENT_READONLY=false
 ```
 
-如需正式短信和 AI 能力，再填写腾讯云短信、Tavily、DeepSeek、JustOneAPI 等真实密钥。部署脚本不会生成、写入或提交任何真实 API Key。
+如需 AI 能力，再填写 Tavily、DeepSeek、JustOneAPI 等真实密钥。部署脚本不会生成、写入或提交任何真实 API Key。
 
 ## 5. 一键安装和部署
 

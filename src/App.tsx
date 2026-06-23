@@ -134,6 +134,15 @@ const formatDateTime = (value: string) => {
   }
   return date.toLocaleString("zh-CN");
 };
+const getAccountStatusLabel = (status: AuthUser["status"]) => {
+  if (status === "disabled") {
+    return "已禁用";
+  }
+  if (status === "deleted") {
+    return "已删除";
+  }
+  return "正常";
+};
 
 const industryProfiles = data.industryProfiles as IndustryProfile[];
 const defaultProfile = industryProfiles[0] ?? null;
@@ -259,7 +268,7 @@ type AuthSession = {
   username: string;
   displayName: string;
   role: "admin" | "member";
-  status: "active" | "deleted";
+  status: "active" | "disabled" | "deleted";
   loginAt: string;
   expiresAt: string;
   authMode: "server";
@@ -271,9 +280,10 @@ type AuthUser = {
   username: string;
   displayName: string;
   role: "admin" | "member";
-  status: "active" | "deleted";
+  status: "active" | "disabled" | "deleted";
   createdAt: string;
   lastLoginAt: string;
+  hasPassword: boolean;
 };
 
 type AppAuthApi = {
@@ -714,7 +724,14 @@ function App() {
 function AccountsView({ session }: { session: AuthSession }) {
   const [users, setUsers] = useState<AuthUser[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [deletingUserId, setDeletingUserId] = useState("");
+  const [updatingUserId, setUpdatingUserId] = useState("");
+  const [isCreating, setIsCreating] = useState(false);
+  const [createForm, setCreateForm] = useState({
+    phone: "",
+    displayName: "",
+    password: "",
+    role: "member" as AuthUser["role"],
+  });
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
 
@@ -744,13 +761,42 @@ function AccountsView({ session }: { session: AuthSession }) {
     loadUsers();
   }, [session.token]);
 
+  const updateUser = async (user: AuthUser, endpoint: string, body: Record<string, string>, successMessage: string) => {
+    setUpdatingUserId(user.id);
+    setError("");
+    setMessage("");
+
+    try {
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${session.token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ userId: user.id, ...body }),
+      });
+      const payload = await parseResearchResponse(response);
+
+      if (!response.ok) {
+        throw new Error(payload.error ?? "账号更新失败");
+      }
+
+      setUsers((current) => current.map((item) => (item.id === user.id ? (payload.user as AuthUser) : item)));
+      setMessage(successMessage);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "账号更新失败");
+    } finally {
+      setUpdatingUserId("");
+    }
+  };
+
   const deleteUser = async (user: AuthUser) => {
     const confirmed = window.confirm(`确定删除账号 ${user.phone} 吗？删除后该手机号不能再登录。`);
     if (!confirmed) {
       return;
     }
 
-    setDeletingUserId(user.id);
+    setUpdatingUserId(user.id);
     setError("");
     setMessage("");
 
@@ -766,16 +812,65 @@ function AccountsView({ session }: { session: AuthSession }) {
       const payload = await parseResearchResponse(response);
 
       if (!response.ok) {
-        throw new Error(payload.error ?? "删除账号失败");
+        throw new Error(payload.error ?? "账号删除失败");
       }
 
-      setUsers((current) => current.map((item) => (item.id === user.id ? (payload.user as AuthUser) : item)));
+      setUsers((current) => current.filter((item) => item.id !== user.id));
       setMessage(`账号 ${user.phone} 已删除`);
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "删除账号失败");
+      setError(caught instanceof Error ? caught.message : "账号删除失败");
     } finally {
-      setDeletingUserId("");
+      setUpdatingUserId("");
     }
+  };
+
+  const updateStatus = (user: AuthUser, status: "active" | "disabled") => {
+    const label = status === "active" ? "启用" : "禁用";
+    updateUser(user, "/api/auth/users/status", { status }, `账号 ${user.phone} 已${label}`);
+  };
+
+  const updateRole = (user: AuthUser, role: "admin" | "member") => {
+    const label = role === "admin" ? "管理员" : "成员";
+    updateUser(user, "/api/auth/users/role", { role }, `账号 ${user.phone} 已设为${label}`);
+  };
+
+  const createUser = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setIsCreating(true);
+    setError("");
+    setMessage("");
+
+    try {
+      const response = await fetch("/api/auth/users/create", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${session.token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(createForm),
+      });
+      const payload = await parseResearchResponse(response);
+
+      if (!response.ok) {
+        throw new Error(payload.error ?? "账号创建失败");
+      }
+
+      setUsers((current) => [...current, payload.user as AuthUser]);
+      setCreateForm({ phone: "", displayName: "", password: "", role: "member" });
+      setMessage(`账号 ${(payload.user as AuthUser).phone} 已创建`);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "账号创建失败");
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
+  const resetPassword = async (user: AuthUser) => {
+    const password = window.prompt(`请输入账号 ${user.phone} 的新密码，至少 8 位。`);
+    if (password === null) {
+      return;
+    }
+    await updateUser(user, "/api/auth/users/password", { password }, `账号 ${user.phone} 的密码已重置`);
   };
 
   return (
@@ -783,7 +878,7 @@ function AccountsView({ session }: { session: AuthSession }) {
       <div className="section-heading">
         <div>
           <h2>账号管理</h2>
-          <span>管理员可查看账号状态，并删除不再使用的普通账号</span>
+          <span>管理员可查看账号状态，调整角色，并禁用或删除不再使用的账号</span>
         </div>
         <button className="icon-button" disabled={isLoading} onClick={loadUsers} type="button">
           {isLoading ? <Loader2 className="spin-icon" size={18} aria-hidden="true" /> : <Search size={18} aria-hidden="true" />}
@@ -794,6 +889,47 @@ function AccountsView({ session }: { session: AuthSession }) {
       {error ? <div className="research-error">{error}</div> : null}
       {message ? <div className="topic-confirm-message">{message}</div> : null}
 
+      <form className="account-create-form" onSubmit={createUser}>
+        <label>
+          <span>手机号</span>
+          <input
+            inputMode="numeric"
+            onChange={(event) => setCreateForm((current) => ({ ...current, phone: event.target.value }))}
+            placeholder="11 位手机号"
+            value={createForm.phone}
+          />
+        </label>
+        <label>
+          <span>昵称</span>
+          <input
+            onChange={(event) => setCreateForm((current) => ({ ...current, displayName: event.target.value }))}
+            placeholder="可选"
+            value={createForm.displayName}
+          />
+        </label>
+        <label>
+          <span>初始密码</span>
+          <input
+            minLength={8}
+            onChange={(event) => setCreateForm((current) => ({ ...current, password: event.target.value }))}
+            placeholder="至少 8 位"
+            type="password"
+            value={createForm.password}
+          />
+        </label>
+        <label>
+          <span>角色</span>
+          <select onChange={(event) => setCreateForm((current) => ({ ...current, role: event.target.value as AuthUser["role"] }))} value={createForm.role}>
+            <option value="member">成员</option>
+            <option value="admin">管理员</option>
+          </select>
+        </label>
+        <button className="icon-button" disabled={isCreating} type="submit">
+          {isCreating ? <Loader2 className="spin-icon" size={18} aria-hidden="true" /> : <CheckCircle2 size={18} aria-hidden="true" />}
+          <span>{isCreating ? "创建中" : "创建账号"}</span>
+        </button>
+      </form>
+
       <div className="table-scroll">
         <table className="account-table">
           <thead>
@@ -802,6 +938,7 @@ function AccountsView({ session }: { session: AuthSession }) {
               <th>昵称</th>
               <th>角色</th>
               <th>状态</th>
+              <th>密码</th>
               <th>创建时间</th>
               <th>最近登录</th>
               <th>操作</th>
@@ -809,26 +946,63 @@ function AccountsView({ session }: { session: AuthSession }) {
           </thead>
           <tbody>
             {users.map((user) => {
-              const isSelf = user.id === session.username || user.phone === session.phone;
-              const canDelete = user.role !== "admin" && user.status === "active" && !isSelf;
+              const isSelf = user.phone === session.phone;
+              const isDeleted = user.status === "deleted";
+              const isUpdating = updatingUserId === user.id;
+              const canChangeRole = !isSelf && !isDeleted;
+              const canDisable = !isSelf && user.status === "active";
+              const canEnable = !isSelf && user.status === "disabled";
+              const canDelete = !isSelf && user.status !== "deleted";
               return (
                 <tr key={user.id}>
                   <td>{user.phone}</td>
                   <td>{user.displayName}</td>
                   <td>{user.role === "admin" ? "管理员" : "成员"}</td>
-                  <td>{user.status === "active" ? "正常" : "已删除"}</td>
+                  <td>{getAccountStatusLabel(user.status)}</td>
+                  <td>{user.hasPassword ? "已设置" : "未设置"}</td>
                   <td>{formatDateTime(user.createdAt)}</td>
                   <td>{formatDateTime(user.lastLoginAt)}</td>
                   <td>
-                    <button
-                      className="icon-button danger account-delete-button"
-                      disabled={!canDelete || deletingUserId === user.id}
-                      onClick={() => deleteUser(user)}
-                      type="button"
-                    >
-                      {deletingUserId === user.id ? <Loader2 className="spin-icon" size={14} aria-hidden="true" /> : <Trash2 size={14} aria-hidden="true" />}
-                      <span>{deletingUserId === user.id ? "删除中" : "删除"}</span>
-                    </button>
+                    <div className="account-action-row">
+                      {canEnable ? (
+                        <button className="icon-button account-delete-button" disabled={isUpdating} onClick={() => updateStatus(user, "active")} type="button">
+                          {isUpdating ? <Loader2 className="spin-icon" size={14} aria-hidden="true" /> : <CheckCircle2 size={14} aria-hidden="true" />}
+                          <span>启用</span>
+                        </button>
+                      ) : (
+                        <button className="icon-button account-delete-button" disabled={!canDisable || isUpdating} onClick={() => updateStatus(user, "disabled")} type="button">
+                          {isUpdating ? <Loader2 className="spin-icon" size={14} aria-hidden="true" /> : <X size={14} aria-hidden="true" />}
+                          <span>禁用</span>
+                        </button>
+                      )}
+                      <button
+                        className="icon-button secondary account-delete-button"
+                        disabled={!canChangeRole || isUpdating}
+                        onClick={() => updateRole(user, user.role === "admin" ? "member" : "admin")}
+                        type="button"
+                      >
+                        <Clipboard size={14} aria-hidden="true" />
+                        <span>{user.role === "admin" ? "设为成员" : "设为管理员"}</span>
+                      </button>
+                      <button
+                        className="icon-button secondary account-delete-button"
+                        disabled={isDeleted || isUpdating}
+                        onClick={() => resetPassword(user)}
+                        type="button"
+                      >
+                        <Clipboard size={14} aria-hidden="true" />
+                        <span>重置密码</span>
+                      </button>
+                      <button
+                        className="icon-button danger account-delete-button"
+                        disabled={!canDelete || isUpdating}
+                        onClick={() => deleteUser(user)}
+                        type="button"
+                      >
+                        {isUpdating ? <Loader2 className="spin-icon" size={14} aria-hidden="true" /> : <Trash2 size={14} aria-hidden="true" />}
+                        <span>{isUpdating ? "处理中" : "删除"}</span>
+                      </button>
+                    </div>
                   </td>
                 </tr>
               );

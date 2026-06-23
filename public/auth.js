@@ -1,7 +1,6 @@
 (function attachAuth(global) {
   var defaults = {
     AUTH_API_BASE_URL: "",
-    CODE_ENDPOINT: "/api/auth/code/send",
     LOGIN_ENDPOINT: "/api/auth/login",
     PROFILE_ENDPOINT: "/api/auth/profile",
     LOGOUT_ENDPOINT: "/api/auth/logout",
@@ -13,7 +12,6 @@
   var runtimeConfig = global.__APP_CONFIG__ && typeof global.__APP_CONFIG__ === "object" ? global.__APP_CONFIG__ : {};
   var CONFIG = {
     AUTH_API_BASE_URL: runtimeConfig.AUTH_API_BASE_URL || defaults.AUTH_API_BASE_URL,
-    CODE_ENDPOINT: runtimeConfig.CODE_ENDPOINT || defaults.CODE_ENDPOINT,
     LOGIN_ENDPOINT: runtimeConfig.LOGIN_ENDPOINT || defaults.LOGIN_ENDPOINT,
     PROFILE_ENDPOINT: runtimeConfig.PROFILE_ENDPOINT || defaults.PROFILE_ENDPOINT,
     LOGOUT_ENDPOINT: runtimeConfig.LOGOUT_ENDPOINT || defaults.LOGOUT_ENDPOINT,
@@ -148,19 +146,12 @@
     return token ? { Authorization: "Bearer " + token } : {};
   }
 
-  async function sendCode(phone) {
-    return requestAuth(CONFIG.CODE_ENDPOINT, {
-      method: "POST",
-      body: { phone: phone },
-    });
-  }
-
   async function login(credentials) {
     var payload = await requestAuth(CONFIG.LOGIN_ENDPOINT, {
       method: "POST",
       body: {
-        phone: credentials && credentials.phone,
-        code: credentials && credentials.code,
+        identifier: credentials && credentials.identifier,
+        password: credentials && credentials.password,
       },
     });
     var session = toSession(payload);
@@ -218,7 +209,6 @@
 
   global.AppAuth = {
     config: CONFIG,
-    sendCode: sendCode,
     fetchCurrentUser: fetchCurrentUser,
     validateSession: validateSession,
     login: login,

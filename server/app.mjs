@@ -20,12 +20,15 @@ import { normalizeIndustryId } from "./services/industry.mjs";
 import { searchDouyinVideos } from "./services/douyinService.mjs";
 import { refreshDashboardDaily, refreshWeeklyPlan } from "./services/weeklyPlan.mjs";
 import {
+  createAuthUser,
   deleteAuthUser,
   getCurrentUserFromRequest,
   listAuthUsers,
-  loginWithCode,
+  loginWithPassword,
   logoutAuthUser,
-  sendVerificationCode,
+  updateAuthUserPassword,
+  updateAuthUserRole,
+  updateAuthUserStatus,
   validateAuthSession,
 } from "./services/authStore.mjs";
 
@@ -63,16 +66,9 @@ export function createAppHandler(options = {}) {
         return;
       }
 
-      if (req.method === "POST" && pathname === "/api/auth/code/send") {
-        const body = await readJsonBody(req);
-        const result = sendVerificationCode(body);
-        sendJson(res, 200, result);
-        return;
-      }
-
       if (req.method === "POST" && pathname === "/api/auth/login") {
         const body = await readJsonBody(req);
-        const result = loginWithCode(body);
+        const result = loginWithPassword(body);
         sendJson(res, 200, result);
         return;
       }
@@ -102,9 +98,37 @@ export function createAppHandler(options = {}) {
         return;
       }
 
+      if (req.method === "POST" && pathname === "/api/auth/users/create") {
+        const body = await readJsonBody(req);
+        const result = createAuthUser(req, body);
+        sendJson(res, 200, result);
+        return;
+      }
+
       if (req.method === "POST" && pathname === "/api/auth/users/delete") {
         const body = await readJsonBody(req);
         const result = deleteAuthUser(req, body);
+        sendJson(res, 200, result);
+        return;
+      }
+
+      if (req.method === "POST" && pathname === "/api/auth/users/status") {
+        const body = await readJsonBody(req);
+        const result = updateAuthUserStatus(req, body);
+        sendJson(res, 200, result);
+        return;
+      }
+
+      if (req.method === "POST" && pathname === "/api/auth/users/role") {
+        const body = await readJsonBody(req);
+        const result = updateAuthUserRole(req, body);
+        sendJson(res, 200, result);
+        return;
+      }
+
+      if (req.method === "POST" && pathname === "/api/auth/users/password") {
+        const body = await readJsonBody(req);
+        const result = updateAuthUserPassword(req, body);
         sendJson(res, 200, result);
         return;
       }

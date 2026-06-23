@@ -108,6 +108,7 @@ if [ ! -f "$ENV_FILE" ]; then
   HOST=0.0.0.0
   PORT=4280
   AUTH_ADMIN_PHONE=你的管理员手机号
+  AUTH_ADMIN_PASSWORD=管理员登录密码
   AUTH_TOKEN_SECRET=一串足够长的随机字符串
   AUTH_USERS_PATH=$DATA_DIR/auth-users.json
   CONTENT_STORAGE_PATH=$DATA_DIR/content.json
