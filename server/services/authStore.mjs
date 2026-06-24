@@ -402,7 +402,7 @@ function verifyToken(token) {
   }
 
   const expected = createHmac("sha256", getTokenSecret()).update(encodedPayload).digest("base64url");
-  if (signature !== expected) {
+  if (!safeEqual(signature, expected)) {
     throwUnauthorized();
   }
 
@@ -412,6 +412,12 @@ function verifyToken(token) {
   }
 
   return payload;
+}
+
+function safeEqual(value, expected) {
+  const valueBuffer = Buffer.from(String(value));
+  const expectedBuffer = Buffer.from(String(expected));
+  return valueBuffer.length === expectedBuffer.length && timingSafeEqual(valueBuffer, expectedBuffer);
 }
 
 function throwUnauthorized() {
