@@ -1,0 +1,11 @@
+dist/
+build/
+coverage/
+node_modules/
+public/uploads/
+.codegraph/
+.agents/
+.claude/
+.codex/
+.cursor/
+package-lock.json

@@ -18,7 +18,7 @@
 | **提示词库** | AI 辅助创作提示词展示与一键复制 |
 | **素材库** | 用户痛点、产品资料、案例素材、金句表达分类沉淀，支持图片上传 |
 | **发布复盘** | 作品发布数据与复盘结论集中展示 |
-| **账号管理** | 手机号验证码登录，管理员可视化管理账号 |
+| **账号管理** | 账号密码登录，管理员可视化创建账号、重置密码和管理权限 |
 
 ---
 
@@ -122,10 +122,12 @@ JUSTONEAPI_BASE_URL=http://47.117.133.51:30015
 
 AUTH_ADMIN_PHONE=13800000000
 AUTH_ADMIN_DISPLAY_NAME=海总管理员
+AUTH_ADMIN_PASSWORD=replace_with_a_strong_admin_password
 AUTH_TOKEN_SECRET=replace_with_a_long_random_secret
 AUTH_USERS_PATH=server/data/auth-users.json
-AUTH_CODE_TTL_MS=300000
 ```
+
+管理员首次登录使用 `AUTH_ADMIN_PHONE` 和 `AUTH_ADMIN_PASSWORD`。普通成员由管理员在“账号管理”中创建或重置密码。
 
 ---
 
@@ -147,21 +149,29 @@ POST /api/production/save-script-template    保存脚本模板
 POST /api/production/delete-script-template  删除脚本模板
 PUT  /api/materials/image-assets         素材图片上传
 POST /api/materials/expand-phrases       金句扩展
-POST /api/auth/code/send                 发送验证码
 POST /api/auth/login                     登录
 GET  /api/auth/profile                   用户信息
+POST /api/auth/validate                  校验登录状态
+POST /api/auth/logout                    退出登录
 GET  /api/auth/users                     用户列表（管理员）
+POST /api/auth/users/create              创建账号（管理员）
 POST /api/auth/users/delete              删除用户（管理员）
+POST /api/auth/users/password            重置密码（管理员）
+POST /api/auth/users/status              启用/禁用用户（管理员）
+POST /api/auth/users/role                调整用户角色（管理员）
 ```
 
 ---
 
 ## ☁️ 上云部署
 
-1. 将项目上传至腾讯云 CVM
-2. 安装 Node.js 20+
-3. 配置 `.env.production.local`
-4. 执行 `npm install && npm run build && npm run start`
+推荐使用腾讯云 CVM + Docker Compose + Nginx：
+
+1. 在 CVM 安装 Docker、Docker Compose、Nginx
+2. 创建 `/opt/haizong-workbench` 和 `/data/haizong/uploads`
+3. 参考 `deploy/tencent-cloud.env.example` 创建 `.env.production.local`
+4. 本地执行 `./scripts/deploy-cvm-docker.sh <CVM_IP> ~/.ssh/your-key.pem root`
+5. 配置 Nginx 反向代理到 `127.0.0.1:4280`
 
 详见 [docs/tencent-cloud-cvm-deploy.md](docs/tencent-cloud-cvm-deploy.md)。
 
