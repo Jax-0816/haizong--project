@@ -45,9 +45,9 @@ NoNewPrivileges=yes
 PrivateTmp=yes
 ProtectSystem=strict
 ProtectHome=yes
-ReadWritePaths=/opt/haizong-workbench/src/data
-ReadOnlyPaths=/opt/haizong-workbench/dist /opt/haizong-workbench/server /opt/haizong-workbench/public
-# 如果 content.json 位置外移，对应修改上面的 ReadWritePaths
+ReadWritePaths=/opt/haizong-workbench/src/data /opt/haizong-workbench/server/data /data/haizong
+ReadOnlyPaths=/opt/haizong-workbench/dist /opt/haizong-workbench/public
+# 如果 CONTENT_STORAGE_PATH 或 AUTH_USERS_PATH 位置调整，对应修改上面的 ReadWritePaths
 
 # 资源限制
 LimitNOFILE=65536

@@ -13,9 +13,12 @@ coverage/
 !.env.example
 server/data/auth-users.json
 public/uploads/
-data/
+/data/
 .vscode/
 .idea/
+.agents/
+.claude/
+.cursor/
 .cache/
 .turbo/
 *.tsbuildinfo

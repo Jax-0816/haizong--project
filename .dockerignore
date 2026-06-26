@@ -8,6 +8,9 @@ logs/
 backups/
 .DS_Store
 .codegraph/
+.agents/
+.claude/
+.cursor/
 *.tsbuildinfo
 server/data/auth-users.json
 public/uploads/
