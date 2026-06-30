@@ -1329,11 +1329,11 @@ function Dashboard({
           <h2>{industryProfile.dashboard.heroTitle}</h2>
           <p>{industryProfile.dashboard.heroDescription}</p>
           <div className="command-actions">
-            <button className="command-button primary" disabled={Boolean(dashboardAiLoading)} onClick={requestTodayDecision} type="button">
+            <button className="command-button secondary" disabled={Boolean(dashboardAiLoading)} onClick={requestTodayDecision} type="button">
               {dashboardAiLoading ? <Loader2 className="spin-icon" size={18} aria-hidden="true" /> : <Sparkles size={18} aria-hidden="true" />}
               <span>{dashboardAiLoading ? "生成中" : "生成今日选题"}</span>
             </button>
-            <button className="command-button secondary" disabled={dashboardRefreshLoading} onClick={handleDailyRefresh} type="button">
+            <button className="command-button primary daily-refresh-button" disabled={dashboardRefreshLoading} onClick={handleDailyRefresh} type="button">
               {dashboardRefreshLoading ? <Loader2 className="spin-icon" size={18} aria-hidden="true" /> : <Globe2 size={18} aria-hidden="true" />}
               <span>{dashboardRefreshLoading ? "刷新中" : "今日刷新"}</span>
             </button>

@@ -735,6 +735,11 @@ dd {
   color: #fff;
 }
 
+.command-button.daily-refresh-button {
+  border-color: rgba(255, 255, 255, 0.64);
+  box-shadow: 0 14px 30px rgba(0, 102, 204, 0.24), 0 0 0 4px rgba(0, 102, 204, 0.08);
+}
+
 .command-button.secondary,
 .icon-button.secondary,
 .asset-link {

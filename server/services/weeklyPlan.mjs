@@ -2,6 +2,7 @@ import { readContent, writeContent } from "./contentStore.mjs";
 import { getIndustryProfile, normalizeIndustryId } from "./industry.mjs";
 import { generateResearchInsight, generateWeeklyPlan } from "./llm.mjs";
 import { searchDouyinVideos } from "./douyinService.mjs";
+import { searchCrossPlatformSources } from "./crossPlatformSearchService.mjs";
 
 /**
  * 从选题池中智能生成本周发布计划（周一至周五），写入 content.json。
@@ -66,20 +67,37 @@ export async function refreshDashboardDaily({ industry }) {
     column: "全部栏目",
     freshness: "oneDay",
     notes: JSON.stringify({
-      task: "首页每日刷新：仅基于抖音搜索结果生成今日推荐选题，只更新首页推荐区，不自动写入选题池。",
+      task: "首页每日刷新：基于抖音与跨平台搜索结果生成今日推荐选题，只更新首页推荐区，不自动写入选题池。",
       industryProfile: profile,
       positioning: content.positioning,
       priorityTopics: content.priorityTopics,
       materials: content.materials,
     }),
   };
-  const douyinVideos = await searchDouyinVideos({
-    query: buildDashboardDouyinQuery(researchRequest, profile),
-    publishTime: "_1",
-    sortType: "_1",
-    maxResults: 12,
-  });
+  const searchQuery = buildDashboardSearchQuery(researchRequest, profile);
+  const [douyinVideos, crossPlatformResult] = await Promise.all([
+    searchDouyinVideos({
+      query: searchQuery,
+      publishTime: "_1",
+      sortType: "_1",
+      maxResults: 12,
+    }),
+    searchCrossPlatformSources({
+      keyword: searchQuery,
+      sources: ["DOUYIN", "XIAOHONGSHU", "KUAISHOU", "WEIXIN"],
+      maxResultsPerSource: 4,
+    })
+      .then((sources) => ({ sources, warning: "" }))
+      .catch((caught) => {
+        const message = caught instanceof Error ? caught.message : "跨平台搜索失败";
+        return {
+          sources: [],
+          warning: `跨平台搜索已跳过：${message}`,
+        };
+      }),
+  ]);
   const douyinSources = normalizeDouyinSources(douyinVideos, researchRequest.query);
+  const mergedSources = mergeResearchSources([...douyinSources, ...crossPlatformResult.sources]);
   const researchModelResult = await generateResearchInsight({
     request: researchRequest,
     industry: id,
@@ -90,12 +108,13 @@ export async function refreshDashboardDaily({ industry }) {
       materials: content.materials,
       recentHotspots: content.hotspots,
       douyinTrends: douyinVideos,
+      crossPlatformTrends: crossPlatformResult.sources,
     },
-    sources: douyinSources,
+    sources: mergedSources,
   });
   const researchResult = normalizeDashboardResearchResult({
     request: researchRequest,
-    sources: douyinSources,
+    sources: mergedSources,
     modelResult: researchModelResult,
   });
 
@@ -124,7 +143,9 @@ export async function refreshDashboardDaily({ industry }) {
     weeklyPlan,
     sources: researchResult.sources ?? [],
     warning: [
-      researchResult.sources?.length ? "" : "未获取到可展示的抖音来源，请检查 JUSTONEAPI_TOKEN 或抖音搜索服务。",
+      researchResult.sources?.length ? "" : "未获取到可展示的抖音或跨平台来源，请检查 JUSTONEAPI_TOKEN 或搜索服务。",
+      crossPlatformResult.warning,
+      !crossPlatformResult.warning && crossPlatformResult.sources.length === 0 ? "跨平台搜索未返回可展示来源，已使用抖音搜索继续刷新。" : "",
       weeklyPlanWarning,
     ]
       .filter(Boolean)
@@ -158,10 +179,22 @@ async function resolveWeeklyPlan({ industry, industryLabel, topics, priorityTopi
   }
 }
 
-function buildDashboardDouyinQuery(request, profile) {
+function buildDashboardSearchQuery(request, profile) {
   const intent = profile?.searchKeywords?.dashboardDecision ?? profile?.searchKeywords?.general ?? "";
   const normalized = [request.query, request.targetUser, intent].filter(Boolean).join(" ").replace(/\s+/g, " ").trim();
   return normalized.length > 200 ? normalized.slice(0, 200) : normalized;
+}
+
+function mergeResearchSources(sources) {
+  const seen = new Set();
+  return sources.filter((source) => {
+    const key = source.url || `${source.siteName}:${source.title}`;
+    if (seen.has(key)) {
+      return false;
+    }
+    seen.add(key);
+    return true;
+  });
 }
 
 function normalizeDouyinSources(videos, query) {
