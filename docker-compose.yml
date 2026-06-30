@@ -7,3 +7,5 @@ services:
       - "127.0.0.1:4280:4280"
     env_file:
       - .env
+    volumes:
+      - "${HAIZONG_DATA_DIR:-/data/haizong}:/data/haizong"
