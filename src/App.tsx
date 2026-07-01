@@ -20,6 +20,7 @@ import {
   X,
 } from "lucide-react";
 import { useEffect, useMemo, useState, type ChangeEvent, type FormEvent } from "react";
+import deepseekLogo from "./assets/deepseek-logo-icon.webp";
 import PromptsView from "./components/PromptsView";
 import data from "./data/content.json";
 import { activeIndustryStorageKey, adaptIndustryText, defaultIndustryId, getIndustryProfile, normalizeIndustryId } from "./industry";
@@ -801,7 +802,7 @@ function TopbarAgent({
     <section className="topbar-agent" aria-label="AI 助手">
       <form className="topbar-agent-form" onSubmit={onSubmit}>
         <div className="agent-logo-slot" aria-label="AI 助手 Logo 预留位">
-          <Sparkles size={16} aria-hidden="true" />
+          <img alt="" src={deepseekLogo} />
         </div>
         <input
           maxLength={600}

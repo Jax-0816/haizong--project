@@ -372,9 +372,15 @@ a {
   width: 34px;
   height: 34px;
   border-radius: 50%;
-  background: var(--surface-selected);
-  color: var(--blue);
+  background: #fff;
   overflow: hidden;
+}
+
+.agent-logo-slot img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .topbar-agent-form input {
