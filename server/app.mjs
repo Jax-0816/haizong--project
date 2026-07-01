@@ -14,7 +14,7 @@ import {
 } from "./services/production.mjs";
 import { runResearch } from "./services/research.mjs";
 import { confirmTopic, deleteTopic, generateCandidates, getTopicCategories, refreshCandidates } from "./services/topicCandidates.mjs";
-import { expandMaterialPhrases, refreshScriptTemplate } from "./services/llm.mjs";
+import { chatWithAgent, expandMaterialPhrases, refreshScriptTemplate } from "./services/llm.mjs";
 import { getAppRuntimeConfig } from "./runtimeConfig.mjs";
 import { normalizeIndustryId } from "./services/industry.mjs";
 import { searchDouyinVideos } from "./services/douyinService.mjs";
@@ -137,6 +137,19 @@ export function createAppHandler(options = {}) {
         const body = await readJsonBody(req);
         validateResearchRequest(body);
         const result = await runResearch(body);
+        sendJson(res, 200, result);
+        return;
+      }
+
+      if (req.method === "POST" && pathname === "/api/agent/chat") {
+        const body = await readJsonBody(req);
+        validateAgentChatRequest(body);
+        const industry = normalizeIndustryId(body.industry);
+        const result = await chatWithAgent({
+          question: String(body.question).trim(),
+          industry,
+          context: buildAgentContext({ industry, activeView: body.activeView }),
+        });
         sendJson(res, 200, result);
         return;
       }
@@ -508,6 +521,80 @@ function getUploadContentType(filePath) {
   };
 
   return contentTypes[extension] || "application/octet-stream";
+}
+
+function validateAgentChatRequest(body) {
+  const question = String(body?.question ?? "").trim();
+  if (!question) {
+    const error = new Error("请输入要问 AI 助手的问题。");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  if (question.length > 600) {
+    const error = new Error("问题太长了，请控制在 600 字以内。");
+    error.statusCode = 400;
+    throw error;
+  }
+}
+
+function buildAgentContext({ industry, activeView }) {
+  const content = readContent();
+  const profile = (content.industryProfiles || []).find((item) => item.id === industry);
+  const topics = (content.topics || [])
+    .filter((topic) => !topic.industry || topic.industry === industry)
+    .slice(0, 12)
+    .map((topic) => ({
+      title: topic.title,
+      column: topic.column,
+      targetUser: topic.targetUser,
+      painPoint: topic.painPoint,
+      angle: topic.angle,
+      coreView: topic.coreView,
+      platform: topic.platform,
+      scriptStatus: topic.scriptStatus,
+    }));
+  const materials = (content.materials || [])
+    .filter((section) => !section.industry || section.industry === industry)
+    .slice(0, 8)
+    .map((section) => ({
+      title: section.title,
+      description: section.description,
+      items: Array.isArray(section.items) ? section.items.slice(0, 8) : [],
+    }));
+  const reviews = (content.reviews || [])
+    .filter((review) => !review.industry || review.industry === industry)
+    .slice(-6)
+    .map((review) => ({
+      topicTitle: review.topicTitle,
+      platform: review.platform,
+      views: review.views,
+      likes: review.likes,
+      saves: review.saves,
+      comments: review.comments,
+      conversions: review.conversions,
+      conclusion: review.conclusion,
+    }));
+
+  return {
+    activeView: String(activeView ?? ""),
+    positioning: content.positioning,
+    industryProfile: profile
+      ? {
+          label: profile.label,
+          name: profile.name,
+          audience: profile.audience,
+          promise: profile.promise,
+          style: profile.style,
+          platforms: profile.platforms,
+          conversionGoal: profile.conversionGoal,
+          columns: profile.columns,
+        }
+      : null,
+    topics,
+    materials,
+    reviews,
+  };
 }
 
 function readJsonBody(req, options = {}) {

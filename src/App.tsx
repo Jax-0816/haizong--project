@@ -13,6 +13,7 @@ import {
   Loader2,
   Save,
   Search,
+  Send,
   Sparkles,
   Trash2,
   Upload,
@@ -286,6 +287,11 @@ type AuthUser = {
   hasPassword: boolean;
 };
 
+type AgentChatResult = {
+  answer: string;
+  updatedAt: string;
+};
+
 type AppAuthApi = {
   getSession: () => AuthSession | null;
   logout: (options?: { redirect?: boolean; redirectTo?: string }) => void | Promise<void>;
@@ -366,6 +372,10 @@ function App() {
     () => data.materials as Array<MaterialSection & { industry?: IndustryId }>,
   );
   const [session, setSession] = useState<AuthSession | null>(() => window.AppAuth?.getSession() ?? null);
+  const [agentQuestion, setAgentQuestion] = useState("");
+  const [agentResult, setAgentResult] = useState<AgentChatResult | null>(null);
+  const [agentError, setAgentError] = useState("");
+  const [isAgentLoading, setIsAgentLoading] = useState(false);
   const [productions, setProductions] = useState<ContentProduction[]>(() =>
     Array.isArray((data as { productions?: ContentProduction[] }).productions)
       ? ((data as { productions: ContentProduction[] }).productions)
@@ -524,6 +534,43 @@ function App() {
     });
   };
 
+  const askAgent = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const question = agentQuestion.trim();
+    if (!question || isAgentLoading) {
+      return;
+    }
+
+    setIsAgentLoading(true);
+    setAgentError("");
+
+    try {
+      const response = await fetch("/api/agent/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          question,
+          industry: activeIndustry,
+          activeView,
+        }),
+      });
+      const payload = await parseResearchResponse(response);
+
+      if (!response.ok) {
+        throw new Error(payload.error ?? "AI 助手暂时无法回答");
+      }
+
+      setAgentResult({
+        answer: String(payload.answer ?? ""),
+        updatedAt: String(payload.updatedAt ?? new Date().toISOString()),
+      });
+    } catch (caught) {
+      setAgentError(caught instanceof Error ? caught.message : "AI 助手暂时无法回答");
+    } finally {
+      setIsAgentLoading(false);
+    }
+  };
+
   const handleTopicDeleted = (topicId: string) => {
     setTopics((current) => current.filter((topic) => topic.id !== topicId));
     setProductions((current) => current.filter((production) => production.topicId !== topicId));
@@ -566,6 +613,14 @@ function App() {
             ))}
           </div>
         </div>
+        <TopbarAgent
+          answer={agentResult}
+          error={agentError}
+          isLoading={isAgentLoading}
+          onQuestionChange={setAgentQuestion}
+          onSubmit={askAgent}
+          question={agentQuestion}
+        />
         <div className="sidebar-nav-block">
           <nav className="nav-list nav-list-inline nav-list-sidebar" aria-label="页面切换">
             {visibleNavItems.map((item) => {
@@ -718,6 +773,65 @@ function App() {
         {activeView === "accounts" && session?.role === "admin" ? <AccountsView session={session} /> : null}
       </main>
     </div>
+  );
+}
+
+function TopbarAgent({
+  answer,
+  error,
+  isLoading,
+  onQuestionChange,
+  onSubmit,
+  question,
+}: {
+  answer: AgentChatResult | null;
+  error: string;
+  isLoading: boolean;
+  onQuestionChange: (value: string) => void;
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  question: string;
+}) {
+  const [isAnswerCollapsed, setIsAnswerCollapsed] = useState(false);
+
+  useEffect(() => {
+    setIsAnswerCollapsed(false);
+  }, [answer?.answer, answer?.updatedAt]);
+
+  return (
+    <section className="topbar-agent" aria-label="AI 助手">
+      <form className="topbar-agent-form" onSubmit={onSubmit}>
+        <div className="agent-logo-slot" aria-label="AI 助手 Logo 预留位">
+          <Sparkles size={16} aria-hidden="true" />
+        </div>
+        <input
+          maxLength={600}
+          onChange={(event) => onQuestionChange(event.target.value)}
+          placeholder="问 AI 助手：选题、脚本、素材、复盘..."
+          value={question}
+        />
+        <button className="agent-send-button" disabled={!question.trim() || isLoading} type="submit" title="发送问题">
+          {isLoading ? <Loader2 className="spin-icon" size={16} aria-hidden="true" /> : <Send size={16} aria-hidden="true" />}
+        </button>
+      </form>
+
+      {error ? <div className="topbar-agent-message error">{error}</div> : null}
+      {answer?.answer ? (
+        <div className={`topbar-agent-answer ${isAnswerCollapsed ? "collapsed" : ""}`}>
+          <div className="topbar-agent-answer-head">
+            <span>AI 助手</span>
+            <time>{formatDateTime(answer.updatedAt)}</time>
+          </div>
+          {isAnswerCollapsed ? null : <p>{answer.answer}</p>}
+          <button
+            className="agent-answer-toggle"
+            onClick={() => setIsAnswerCollapsed((current) => !current)}
+            type="button"
+          >
+            {isAnswerCollapsed ? "展开" : "收起"}
+          </button>
+        </div>
+      ) : null}
+    </section>
   );
 }
 

@@ -165,6 +165,108 @@ function normalizeTimeout(value, fallback) {
   return Number.isFinite(parsed) && parsed >= 1000 ? parsed : fallback;
 }
 
+export async function chatWithAgent({ question, context, industry }) {
+  const apiKey = getAgentApiKey();
+  const baseUrl = (process.env.AGENT_DEEPSEEK_BASE_URL || process.env.DEEPSEEK_BASE_URL || DEFAULT_BASE_URL).replace(/\/$/, "");
+  const model = process.env.AGENT_DEEPSEEK_MODEL || process.env.DEEPSEEK_MODEL || DEFAULT_MODEL;
+  const timeoutMs = normalizeTimeout(process.env.AGENT_DEEPSEEK_TIMEOUT_MS ?? process.env.DEEPSEEK_TIMEOUT_MS, DEFAULT_LLM_TIMEOUT_MS);
+  const industryLabel = getIndustryLabel(industry);
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+
+  let response;
+  try {
+    response = await fetch(`${baseUrl}/chat/completions`, {
+      method: "POST",
+      signal: controller.signal,
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model,
+        temperature: 0.45,
+        messages: [
+          {
+            role: "system",
+            content: [
+              `你是海哥自媒体账号内容工作台里的${industryLabel} AI 助手。`,
+              "你的定位是辅助运营者做内容判断、选题拆解、脚本建议、素材整理和复盘分析。",
+              "必须服务 B 端经营价值，优先围绕成本、毛利、供应链、后厨效率、门店运营和采购决策回答。",
+              "不要编造产品优势、真实数据、品牌事实或联网来源；上下文没有依据时要明确说明。",
+              "不要声称已经把内容写入选题池、素材库或复盘结论；如用户想保存，只能建议先人工确认。",
+              "回答要直接、结构化、可执行，默认使用中文。",
+            ].join("\n"),
+          },
+          {
+            role: "user",
+            content: buildAgentChatPrompt({ question, context, industryLabel }),
+          },
+        ],
+      }),
+    });
+  } catch (caught) {
+    const isTimeout = caught?.name === "AbortError";
+    const error = new Error(isTimeout ? "AI 助手响应超时，请稍后重试。" : "AI 助手连接失败，请检查本机网络或 DEEPSEEK_API_KEY 配置。");
+    error.statusCode = 502;
+    error.code = isTimeout ? "AGENT_CHAT_TIMEOUT" : "AGENT_CHAT_FETCH_FAILED";
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
+
+  if (!response.ok) {
+    const detail = await response.text();
+    const error = new Error(`AI 助手请求失败：${response.status} ${detail}`);
+    error.statusCode = 502;
+    throw error;
+  }
+
+  const payload = await response.json();
+  const content = String(payload?.choices?.[0]?.message?.content ?? "").trim();
+
+  if (!content) {
+    const error = new Error("AI 助手没有返回内容。");
+    error.statusCode = 502;
+    throw error;
+  }
+
+  return {
+    answer: content,
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+function getAgentApiKey() {
+  const apiKey = process.env.AGENT_DEEPSEEK_API_KEY || process.env.DEEPSEEK_API_KEY;
+  if (!apiKey) {
+    const error = new Error("缺少 AGENT_DEEPSEEK_API_KEY 或 DEEPSEEK_API_KEY，请在 .env.local 中配置 AI 助手 DeepSeek API Key。");
+    error.statusCode = 400;
+    error.code = "MISSING_CONFIG";
+    throw error;
+  }
+  return apiKey;
+}
+
+function buildAgentChatPrompt({ question, context, industryLabel }) {
+  return JSON.stringify(
+    {
+      task: `请基于以下${industryLabel}工作台上下文回答运营者的问题。`,
+      question,
+      context,
+      rules: [
+        "优先使用 context 中已有的账号定位、选题、素材和复盘信息。",
+        "如果问题需要实时联网来源，但 context 未提供，请说明需要先使用联网调研或今日刷新核对。",
+        "不要自动生成夸大、绝对化或缺少依据的产品卖点。",
+        "如果输出选题、脚本或复盘建议，请保持 B 端经营视角。",
+        "回答尽量分点，但不要过长。",
+      ],
+    },
+    null,
+    2,
+  );
+}
+
 export async function generateProductionScript({ topic, template, researchNotes, materials }) {
   const apiKey = requireEnv("DEEPSEEK_API_KEY", "缺少 DEEPSEEK_API_KEY，请在 .env.local 中配置 DeepSeek API Key。");
   const baseUrl = (process.env.DEEPSEEK_BASE_URL || DEFAULT_BASE_URL).replace(/\/$/, "");
